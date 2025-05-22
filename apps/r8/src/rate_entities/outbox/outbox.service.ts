@@ -45,4 +45,15 @@ export class OutboxService implements OnModuleInit {
       `Dispatched and marked ${pending.length} events as published.`,
     );
   }
+
+  @Cron('0 2 1 * *')
+  async cleanEmitedOutbox() {
+    const res = await this.repository
+      .createQueryBuilder()
+      .delete()
+      .from(Outbox)
+      .where('status = :status', { status: 'published' })
+      .execute();
+    this.logger.log(`Deleted ${res.affected} published outbox rows`);
+  }
 }
