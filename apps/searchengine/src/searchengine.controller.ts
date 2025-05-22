@@ -19,7 +19,11 @@ export class SearchengineController {
   }
 
   @EventPattern('rate-entity-created')
-  async indexEntity(@Payload() entity: RateEntity) {
+  async indexEntity(@Payload() entities: RateEntity[]) {
+    await Promise.all(entities.map((entity) => this.indexOne(entity)));
+  }
+
+  private async indexOne(entity: RateEntity) {
     const doc = {
       id: entity.id,
       type: entity.type,

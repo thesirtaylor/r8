@@ -1,5 +1,5 @@
 import { join } from 'path';
-import { RateEntity, Rating, User } from './libs/commonlib/src/entity';
+import { Outbox, RateEntity, Rating, User } from './libs/commonlib/src/entity';
 import { DataSource } from 'typeorm';
 import * as dotenv from 'dotenv';
 
@@ -12,8 +12,8 @@ export const AppDataSource = new DataSource({
   username: process.env.DB_USER,
   password: process.env.DB_PASS,
   database: process.env.DB_NAME,
-  entities: [User, RateEntity, Rating],
+  entities: [User, RateEntity, Rating, Outbox],
   migrations: [join(__dirname, 'apps/migrations/*.{ts,js}')],
   synchronize: false,
-  logging: !!process.env.DB_LOG,
+  // logging: !!process.env.DB_LOG,
 });
