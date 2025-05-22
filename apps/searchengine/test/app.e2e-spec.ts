@@ -1,14 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
-import { AutosuggestModule } from './../src/autosuggest.module';
+import { SearchengineModule } from '../src/searchengine.module';
 
-describe('AutosuggestController (e2e)', () => {
+describe('SearchengineController (e2e)', () => {
   let app: INestApplication;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AutosuggestModule],
+      imports: [SearchengineModule],
     }).compile();
 
     app = moduleFixture.createNestApplication();

@@ -28,5 +28,6 @@ import { Config } from '../configs';
   ],
   controllers: [],
   providers: [RedisService],
+  exports: [RedisService],
 })
 export class RedisModule {}

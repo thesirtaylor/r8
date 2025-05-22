@@ -4,18 +4,21 @@ import { RateEntitiesModule } from './rate_entities/rate_entities.module';
 import { RatingsModule } from './ratings/ratings.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppDataSource } from 'data-source';
-import { LoggerModule, RedisModule, RedisService } from '@app/commonlib';
+import { LoggerModule, MessagingModule, RedisModule } from '@app/commonlib';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
     LoggerModule,
     TypeOrmModule.forRoot(AppDataSource.options),
     UsersModule,
     RateEntitiesModule,
     RatingsModule,
     RedisModule,
+    MessagingModule,
   ],
   controllers: [],
-  providers: [RedisService],
+  providers: [],
 })
 export class AppModule {}

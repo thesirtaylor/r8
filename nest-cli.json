@@ -19,13 +19,13 @@
         "tsConfigPath": "apps/r8/tsconfig.app.json"
       }
     },
-    "autosuggest": {
+    "searchengine": {
       "type": "application",
-      "root": "apps/autosuggest",
+      "root": "apps/searchengine",
       "entryFile": "main",
-      "sourceRoot": "apps/autosuggest/src",
+      "sourceRoot": "apps/searchengine/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/autosuggest/tsconfig.app.json"
+        "tsConfigPath": "apps/searchengine/tsconfig.app.json"
       }
     },
     "commonlib": {

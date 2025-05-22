@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { AutosuggestController } from './autosuggest.controller';
-import { AutosuggestService } from './autosuggest.service';
+import { SearchengineController } from './searchengine.controller';
+import { SearchengineService } from './searchengine.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ElasticsearchModule } from '@nestjs/elasticsearch';
 import {
@@ -9,11 +9,11 @@ import {
   RedisModule,
   RedisService,
 } from '@app/commonlib';
-import { SearchengineService } from './searchengine/searchengine.service';
+// import { SearchengineService } from './searchengine/searchengine.service';
 
 @Module({
   imports: [
-    ConfigModule.forRoot(),
+    ConfigModule.forRoot({ isGlobal: true }),
     LoggerModule,
     ElasticsearchModule.registerAsync({
       imports: [ConfigModule],
@@ -24,12 +24,12 @@ import { SearchengineService } from './searchengine/searchengine.service';
     }),
     RedisModule,
   ],
-  controllers: [AutosuggestController],
+  controllers: [SearchengineController],
   providers: [
-    AutosuggestService,
-    RedisService,
     SearchengineService,
+    RedisService,
+    // SearchengineService,
     AppLoggerService,
   ],
 })
-export class AutosuggestModule {}
+export class SearchengineModule {}

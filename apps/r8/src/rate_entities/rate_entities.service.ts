@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { RateEntityRepository } from './rating_entities.repository';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 import {
@@ -6,17 +6,23 @@ import {
   EntityType,
   RateEntity,
   RedisService,
+  SearchRateEntityDto,
+  AppLoggerService,
 } from '@app/commonlib';
 import { ILike, In } from 'typeorm';
-import { SearchRateEntityDto } from '@app/commonlib';
 import { faker } from '@faker-js/faker';
+import { ClientProxy } from '@nestjs/microservices';
 
 @Injectable()
 export class RateEntitiesService {
+  private readonly group = 'rate-entity-group';
+  private readonly stream = 'rate-entity-created';
   constructor(
     private readonly repository: RateEntityRepository,
     private readonly esService: ElasticsearchService,
     private readonly cache: RedisService,
+    private readonly logger: AppLoggerService,
+    @Inject('DATA_STREAM') private readonly client: ClientProxy,
   ) {}
 
   async search(dto: SearchRateEntityDto): Promise<RateEntity[]> {
@@ -53,8 +59,6 @@ export class RateEntitiesService {
       body: { query: { bool: { must } } },
     });
 
-    console.log({ esResp });
-
     const ids = esResp.hits.hits.map((h) => h._source.id);
     let entities: RateEntity[];
 
@@ -67,8 +71,6 @@ export class RateEntitiesService {
       );
       entities.sort((a, b) => orderMap[a.id] - orderMap[b.id]);
     } else {
-      console.log('just here');
-
       const where: any = { name: ILike(`%${q}%`) };
       if (type) where.type = type;
       entities = await this.repository.find({ where, take: 10 });
@@ -78,7 +80,11 @@ export class RateEntitiesService {
     return entities;
   }
 
-  // temp
+  async create(dto: CreateRateEntityDto) {
+    const saved = await this.repository.save(dto);
+    this.client.emit<string, RateEntity>('rate-entity-created', saved);
+    return saved;
+  }
 
   async reindexAll(entities: RateEntity[]) {
     const body = entities.flatMap((ent) => [

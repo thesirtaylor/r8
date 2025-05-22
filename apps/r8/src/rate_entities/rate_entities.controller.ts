@@ -14,8 +14,7 @@ export class RateEntitiesController {
 
   @Post('entity')
   async createEntity(@Body() payload: CreateRateEntityDto) {
-    // return this.rateEntitiesService.
-    return payload;
+    return this.rateEntitiesService.create(payload);
   }
 
   @Post('faker')
