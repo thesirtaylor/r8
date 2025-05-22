@@ -6,10 +6,14 @@ import { RateEntity, RedisModule, RedisService } from '@app/commonlib';
 import { RateEntityRepository } from './rating_entities.repository';
 import { ElasticsearchModule } from '@nestjs/elasticsearch';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { OutboxService } from './outbox/outbox.service';
+import { Outbox } from '@app/commonlib';
+import { OutboxRepository } from './outbox/outbox.repository';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([RateEntity]),
+    TypeOrmModule.forFeature([RateEntity, Outbox]),
     ElasticsearchModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
@@ -18,8 +22,15 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       inject: [ConfigService],
     }),
     RedisModule,
+    ScheduleModule.forRoot(),
   ],
   controllers: [RateEntitiesController],
-  providers: [RateEntitiesService, RateEntityRepository, RedisService],
+  providers: [
+    RateEntitiesService,
+    RateEntityRepository,
+    RedisService,
+    OutboxService,
+    OutboxRepository,
+  ],
 })
 export class RateEntitiesModule {}

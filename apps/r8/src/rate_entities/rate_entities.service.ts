@@ -1,4 +1,9 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+} from '@nestjs/common';
 import { RateEntityRepository } from './rating_entities.repository';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 import {
@@ -8,10 +13,13 @@ import {
   RedisService,
   SearchRateEntityDto,
   AppLoggerService,
+  Outbox,
 } from '@app/commonlib';
 import { ILike, In } from 'typeorm';
 import { faker } from '@faker-js/faker';
 import { ClientProxy } from '@nestjs/microservices';
+import { createHash } from 'crypto';
+import { DataSource } from 'typeorm';
 
 @Injectable()
 export class RateEntitiesService {
@@ -22,6 +30,7 @@ export class RateEntitiesService {
     private readonly esService: ElasticsearchService,
     private readonly cache: RedisService,
     private readonly logger: AppLoggerService,
+    private ds: DataSource,
     @Inject('DATA_STREAM') private readonly client: ClientProxy,
   ) {}
 
@@ -81,9 +90,29 @@ export class RateEntitiesService {
   }
 
   async create(dto: CreateRateEntityDto) {
-    const saved = await this.repository.save(dto);
-    this.client.emit<string, RateEntity>('rate-entity-created', saved);
-    return saved;
+    const idempotencyKey = this.makeIdempotencyKey(dto);
+    return this.ds.transaction(async (manager) => {
+      try {
+        await manager.getRepository(Outbox).insert({
+          eventType: 'rate-entity-created',
+          payload: JSON.stringify(dto),
+          status: 'pending',
+          idempotencyKey,
+        });
+      } catch (error) {
+        if (error.code === '23505') {
+          throw new ConflictException('Duplicate operation');
+        }
+        throw error;
+      }
+
+      const save = await manager.getRepository(RateEntity).save(dto);
+      return save;
+    });
+  }
+
+  private makeIdempotencyKey(dto: CreateRateEntityDto): string {
+    return createHash('sha256').update(JSON.stringify(dto)).digest('hex');
   }
 
   async reindexAll(entities: RateEntity[]) {
