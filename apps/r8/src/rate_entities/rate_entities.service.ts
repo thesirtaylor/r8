@@ -4,7 +4,7 @@ import {
   Inject,
   Injectable,
 } from '@nestjs/common';
-import { RateEntityRepository } from './rating_entities.repository';
+import { RateEntityRepository } from '../../../../libs/commonlib/src/repository/rating_entities.repository';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 import {
   CreateRateEntityDto,
@@ -20,6 +20,8 @@ import { faker } from '@faker-js/faker';
 import { ClientProxy } from '@nestjs/microservices';
 import { createHash } from 'crypto';
 import { DataSource } from 'typeorm';
+import { plainToInstance } from 'class-transformer';
+import { validateOrReject } from 'class-validator';
 
 @Injectable()
 export class RateEntitiesService {
@@ -105,9 +107,10 @@ export class RateEntitiesService {
         }
         throw error;
       }
-
-      const save = await manager.getRepository(RateEntity).save(dto);
-      return save;
+      const entitydto = plainToInstance(CreateRateEntityDto, dto);
+      await validateOrReject(entitydto);
+      const createEntity = manager.getRepository(RateEntity).create(entitydto);
+      return await manager.getRepository(RateEntity).save(createEntity);
     });
   }
 

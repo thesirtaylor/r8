@@ -1,8 +1,12 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { OutboxRepository } from './outbox.repository';
 import { ClientProxy } from '@nestjs/microservices';
 import { Cron } from '@nestjs/schedule';
-import { AppLoggerService, Outbox, RateEntity } from '@app/commonlib';
+import {
+  AppLoggerService,
+  Outbox,
+  RateEntity,
+  OutboxRepository,
+} from '@app/commonlib';
 import { firstValueFrom } from 'rxjs';
 
 @Injectable()

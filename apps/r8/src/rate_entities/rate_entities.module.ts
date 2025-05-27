@@ -2,13 +2,17 @@ import { Module } from '@nestjs/common';
 import { RateEntitiesService } from './rate_entities.service';
 import { RateEntitiesController } from './rate_entities.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { RateEntity, RedisModule, RedisService } from '@app/commonlib';
-import { RateEntityRepository } from './rating_entities.repository';
+import {
+  RateEntity,
+  RedisModule,
+  RedisService,
+  RateEntityRepository,
+} from '@app/commonlib';
 import { ElasticsearchModule } from '@nestjs/elasticsearch';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { OutboxService } from './outbox/outbox.service';
 import { Outbox } from '@app/commonlib';
-import { OutboxRepository } from './outbox/outbox.repository';
+import { OutboxRepository } from '../../../../libs/commonlib/src/repository/outbox.repository';
 import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({

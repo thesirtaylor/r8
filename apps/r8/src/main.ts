@@ -6,6 +6,6 @@ async function bootstrap() {
   await AppDataSource.initialize();
   await AppDataSource.runMigrations();
   const app = await NestFactory.create(AppModule);
-  await app.listen(3000);
+  await app.listen(4002);
 }
 bootstrap();

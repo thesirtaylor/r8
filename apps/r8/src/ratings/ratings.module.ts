@@ -2,11 +2,11 @@ import { Module } from '@nestjs/common';
 import { RatingsService } from './ratings.service';
 import { RatingsController } from './ratings.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Rating } from '@app/commonlib';
-import { RatingRepository } from './ratings.repository';
+import { Rating, RatingRepository } from '@app/commonlib';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Rating])],
+  imports: [TypeOrmModule.forFeature([Rating]), AuthModule],
   controllers: [RatingsController],
   providers: [RatingsService, RatingRepository],
 })

@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppDataSource } from 'data-source';
 import { LoggerModule, MessagingModule, RedisModule } from '@app/commonlib';
 import { ConfigModule } from '@nestjs/config';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { ConfigModule } from '@nestjs/config';
     RatingsModule,
     RedisModule,
     MessagingModule,
+    AuthModule,
   ],
   controllers: [],
   providers: [],
