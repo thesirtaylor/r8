@@ -29,7 +29,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') implements CanActivate {
 
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-    req.user = response;
+    req.user = response.id;
 
     return true;
   }

@@ -21,4 +21,7 @@ export class RateEntitiesController {
   async fakeEntity() {
     return this.rateEntitiesService.fakerGenerate();
   }
+
+  @Get('entity')
+  async getEntity() {}
 }

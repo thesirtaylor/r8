@@ -14,6 +14,8 @@ import {
   SearchRateEntityDto,
   AppLoggerService,
   Outbox,
+  getCompression,
+  setCompression,
 } from '@app/commonlib';
 import { ILike, In } from 'typeorm';
 import { faker } from '@faker-js/faker';
@@ -43,8 +45,10 @@ export class RateEntitiesService {
 
     const cachekey = `entities:search:${type || 'all'}:${q}`;
 
-    const cached = await this.cache.get(cachekey);
-    if (cached) return JSON.parse(cached);
+    // const cached = await this.cache.get(cachekey);
+    const cached = (await getCompression(this.cache, cachekey)) as RateEntity[];
+
+    if (cached) return cached;
 
     const must: any[] = [
       {
@@ -87,7 +91,9 @@ export class RateEntitiesService {
       entities = await this.repository.find({ where, take: 10 });
     }
 
-    await this.cache.set(cachekey, JSON.stringify(entities), 300);
+    // await this.cache.set(cachekey, JSON.stringify(entities), 300);
+    await setCompression(this.cache, cachekey, entities, 300);
+
     return entities;
   }
 
