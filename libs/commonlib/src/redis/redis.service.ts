@@ -24,4 +24,8 @@ export class RedisService {
   async quit() {
     return await this.redis.quit();
   }
+
+  async keys(key: string) {
+    return await this.redis.keys(key);
+  }
 }

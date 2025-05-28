@@ -23,4 +23,7 @@ export class Rating extends BaseEntity {
 
   @Column({ type: 'text', array: true, nullable: true })
   tags: string[];
+
+  @Column({ type: 'boolean', nullable: false, default: false })
+  anonymous: boolean;
 }

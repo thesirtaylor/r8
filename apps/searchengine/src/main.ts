@@ -1,11 +1,10 @@
 import { NestFactory } from '@nestjs/core';
 import { SearchengineModule } from './searchengine.module';
 import { Transport } from '@nestjs/microservices';
-// import { ConfigService } from '@nestjs/config';
+import { AppLoggerService, LoggingInterceptor } from '@app/commonlib';
 
 async function bootstrap() {
   const app = await NestFactory.create(SearchengineModule);
-  // const configService = app.get(ConfigService);
 
   app.connectMicroservice({
     transport: Transport.REDIS,
@@ -14,7 +13,8 @@ async function bootstrap() {
       port: process.env.REDIS_PORT,
     },
   });
-
+  const logger = app.get(AppLoggerService);
+  app.useGlobalInterceptors(new LoggingInterceptor(logger));
   await app.startAllMicroservices();
   await app.listen(process.env.port ?? 3001);
 }

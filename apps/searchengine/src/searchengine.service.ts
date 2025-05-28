@@ -1,4 +1,9 @@
-import { RedisService, AppLoggerService } from '@app/commonlib';
+import {
+  RedisService,
+  AppLoggerService,
+  setCompression,
+  getCompression,
+} from '@app/commonlib';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 
@@ -87,14 +92,15 @@ export class SearchengineService implements OnModuleDestroy, OnModuleInit {
     if (!q) return [];
 
     const key = `autosuggest:${q}`;
-    console.log({ key });
+    // console.log({ key });
 
-    const hit = await this.cache.get(key);
+    // const hit = await this.cache.get(key);
+    const hit = (await getCompression(this.cache, key)) as any[];
 
     if (hit) {
-      console.log({ hit: JSON.parse(hit) });
+      // console.log({ hit });
 
-      return JSON.parse(hit);
+      return hit;
     }
 
     const resp = await this.es.search({
@@ -118,9 +124,8 @@ export class SearchengineService implements OnModuleDestroy, OnModuleInit {
     });
 
     const results = resp.hits.hits.map((h) => h._source);
-    await this.cache.set(key, JSON.stringify(results), 300);
-    console.log({ results });
-
+    // await this.cache.set(key, JSON.stringify(results), 300);
+    await setCompression(this.cache, key, results, 300);
     return results;
   }
 }

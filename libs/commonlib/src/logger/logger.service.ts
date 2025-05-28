@@ -7,7 +7,7 @@ export enum LogLevel {
   ERROR = 'error',
 }
 
-@Injectable({ scope: Scope.TRANSIENT })
+@Injectable({ scope: Scope.DEFAULT })
 export class AppLoggerService implements LoggerService {
   private readonly logger: LoggerService;
   private context!: string;
