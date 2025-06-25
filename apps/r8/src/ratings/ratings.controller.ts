@@ -13,10 +13,23 @@ import {
   AppLoggerService,
   CreateEntityRatingDto,
   FindEntitysRatingsWithCursorQuery,
+  GetRatingStatDto,
+  GlobalStatsQueryDto,
 } from '@app/commonlib';
 
 import { plainToInstance } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
+import {
+  ApiExcludeEndpoint,
+  ApiOperation,
+  ApiResponse,
+  ApiSecurity,
+} from '@nestjs/swagger';
+import {
+  GlobalRatingStatsResponseDto,
+  PaginatedRatingsResponseDto,
+  RatingDetailResponseDto,
+} from '../openAPI';
 
 @Controller('ratings')
 export class RatingsController {
@@ -26,6 +39,7 @@ export class RatingsController {
   ) {}
 
   @Get('/')
+  @ApiExcludeEndpoint()
   @UseGuards(JwtAuthGuard)
   async CreatRating(@Request() req: any) {
     this.logger.log(req.user);
@@ -33,12 +47,27 @@ export class RatingsController {
   }
 
   @Get('/entity')
+  @UseGuards(JwtAuthGuard)
+  @ApiSecurity('access-token')
+  @ApiOperation({ summary: 'Get all ratings for an Entity' })
+  @ApiResponse({
+    status: 200,
+    description: 'OK',
+    type: PaginatedRatingsResponseDto,
+  })
   async getEntityRating(@Query() query: FindEntitysRatingsWithCursorQuery) {
     return await this.ratingsService.GetRatingsOfEntity(query);
   }
 
   @Post('/entity')
   @UseGuards(JwtAuthGuard)
+  @ApiSecurity('access-token')
+  @ApiOperation({ summary: 'Rate an Entity' })
+  @ApiResponse({
+    status: 200,
+    description: 'OK',
+    type: RatingDetailResponseDto,
+  })
   async rateEntity(
     @Request() req: any,
     @Body() payload: CreateEntityRatingDto,
@@ -54,5 +83,37 @@ export class RatingsController {
     const dataDto = plainToInstance(CreateEntityRatingDto, data);
     await validateOrReject(dataDto);
     return await this.ratingsService.RateEntity(data);
+  }
+
+  @Get('/global-stats')
+  @ApiOperation({ summary: 'Return global statistics for all Entities' })
+  @ApiResponse({
+    status: 200,
+    description: 'OK',
+    type: GlobalRatingStatsResponseDto,
+  })
+  async getGlobalStats(@Query() query: GlobalStatsQueryDto) {
+    const { interval, from, to, cursor, limit, city, state, country, keyword } =
+      query;
+
+    const locationFilter = { city, state, country };
+    const cursor_ = cursor ? cursor : undefined;
+
+    return this.ratingsService.GlobalRatingStat({
+      interval,
+      from,
+      to,
+      cursor: cursor_,
+      limit,
+      keyword,
+      locationFilter,
+    });
+  }
+
+  @Get('/stat')
+  @ApiOperation({ summary: 'Return Minimal Statistics a Particular Entity' })
+  async getRatingState(@Query() query: GetRatingStatDto) {
+    const { id } = query;
+    return this.ratingsService.GetRatingStatistic({ id });
   }
 }
