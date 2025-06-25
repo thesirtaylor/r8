@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { BaseRepository } from './base.repository';
-import { Outbox } from '@app/commonlib';
+import { Outbox } from '../entity';
 
 @Injectable()
 export class OutboxRepository extends BaseRepository<Outbox> {
