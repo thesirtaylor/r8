@@ -4,11 +4,10 @@ import {
   Inject,
   Injectable,
 } from '@nestjs/common';
-import { RateEntityRepository } from '../../../../libs/commonlib/src/repository/rating_entities.repository';
+import { RateEntityRepository } from '@app/commonlib';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 import {
   CreateRateEntityDto,
-  EntityType,
   RateEntity,
   RedisService,
   SearchRateEntityDto,
@@ -18,7 +17,6 @@ import {
   setCompression,
 } from '@app/commonlib';
 import { ILike, In } from 'typeorm';
-import { faker } from '@faker-js/faker';
 import { ClientProxy } from '@nestjs/microservices';
 import { createHash } from 'crypto';
 import { DataSource } from 'typeorm';
@@ -122,76 +120,5 @@ export class RateEntitiesService {
 
   private makeIdempotencyKey(dto: CreateRateEntityDto): string {
     return createHash('sha256').update(JSON.stringify(dto)).digest('hex');
-  }
-
-  async reindexAll(entities: RateEntity[]) {
-    const body = entities.flatMap((ent) => [
-      { index: { _index: 'entities', _id: ent.id } },
-      {
-        id: ent.id,
-        type: ent.type,
-        name: ent.name,
-        street: ent.street,
-        city: ent.city,
-        state: ent.state,
-        country: ent.country,
-        socials: ent.socials,
-        location:
-          ent.latitude && ent.longitude
-            ? { lat: ent.latitude, lon: ent.longitude }
-            : undefined,
-      },
-    ]);
-    await this.esService.bulk({ refresh: true, body });
-  }
-
-  async fakerGenerate() {
-    const fakedata = [];
-
-    for (let i = 0; i < 500; i++) {
-      const googlePlaceId = faker.string.uuid();
-      const code = faker.string.alphanumeric(6);
-      const username = faker.internet.username();
-      const name = faker.person.fullName();
-      const socials = {
-        facebook: `https://facebook.com/${username}`,
-        twitter: `https://twitter.com/${username}`,
-        linkedin: `https://linkedin.com/in/${username}`,
-        instagram: `https://instagram.com/${username}`,
-        youtube: `https://youtube.com/${username}`,
-        wechat: `https://wechat.com/${username}`,
-        telegram: `https://t.me/${username}`,
-        url: faker.internet.url(),
-        truth_socials: `https://truthsocial.com/${username}`,
-        tiktok: `https://www.tiktok.com/@${username}`,
-        threads: `https://threads.net/@${username}`,
-        twitch: `https://twitch.tv/${username}`,
-        snapchat: `https://www.snapchat.com/add/${username}`,
-        reddit: `https://www.reddit.com/user/${username}`,
-        quora: `https://www.quora.com/profile/${username}`,
-        discord: `https://discord.gg/${code}`,
-      };
-      const street = faker.location.streetAddress();
-      const country = faker.location.country();
-      const city = faker.location.city();
-      const state = faker.location.state();
-      const entityTypes = Object.values(EntityType) as EntityType[];
-      const type = entityTypes[Math.floor(Math.random() * entityTypes.length)];
-      const data: CreateRateEntityDto = {
-        type,
-        name,
-        socials,
-        googlePlaceId,
-        street,
-        country,
-        city,
-        state,
-      };
-
-      fakedata.push(data);
-    }
-    const save = await this.repository.save(fakedata);
-    await this.reindexAll(save);
-    return this.repository.save(fakedata);
   }
 }
