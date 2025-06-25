@@ -1,3 +1,4 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsArray,
   IsBoolean,
@@ -10,9 +11,9 @@ import {
 } from 'class-validator';
 
 export class CreateEntityRatingDto {
-  @IsUUID() entityId: string;
-  @IsInt() @Min(1) @Max(5) score: number;
-  @IsOptional() @IsString() comment?: string;
-  @IsArray() tags?: string[];
-  @IsOptional() @IsBoolean() anonymous?: boolean;
+  @ApiProperty() @IsUUID() entityId: string;
+  @ApiProperty() @IsInt() @Min(1) @Max(5) score: number;
+  @ApiPropertyOptional() @IsOptional() @IsString() comment?: string;
+  @ApiProperty() @IsArray() tags?: string[];
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() anonymous?: boolean;
 }
