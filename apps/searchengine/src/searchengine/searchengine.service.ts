@@ -21,8 +21,34 @@ export class SearchengineService implements OnModuleDestroy, OnModuleInit {
     await this.cache.quit();
   }
 
+  private async waitForElasticSearch(retries = 10, interrvalMs = 3000) {
+    for (let attempts = 1; attempts < retries; attempts++) {
+      try {
+        const isUp = await this.es.ping();
+        if (isUp) {
+          this.logger.log(`Elasticsearch is up!`);
+          return;
+        }
+      } catch (error) {
+        this.logger.warn(
+          `Waiting for ElasticSearch... attempting ${attempts}/${retries}`,
+        );
+        this.logger.error({ error });
+      }
+      await new Promise((res) => setTimeout(res, interrvalMs));
+    }
+    throw new Error(`Elasticsearch not reachable after retries`);
+  }
+
   async onModuleInit() {
-    const exists = await this.es.indices.exists({ index: this.INDEX });
+    await this.waitForElasticSearch();
+    let exists: boolean;
+    try {
+      exists = await this.es.indices.exists({ index: this.INDEX });
+    } catch (error) {
+      this.logger.error(`Elasticsearch unable to check index...`);
+      this.logger.error({ error });
+    }
     if (!exists) {
       this.logger.log(`Creating Elasticseearch ${this.INDEX}`);
       await this.es.indices.create({
@@ -92,14 +118,9 @@ export class SearchengineService implements OnModuleDestroy, OnModuleInit {
     if (!q) return [];
 
     const key = `autosuggest:${q}`;
-    // console.log({ key });
-
-    // const hit = await this.cache.get(key);
     const hit = (await getCompression(this.cache, key)) as any[];
 
     if (hit) {
-      // console.log({ hit });
-
       return hit;
     }
 
@@ -124,7 +145,6 @@ export class SearchengineService implements OnModuleDestroy, OnModuleInit {
     });
 
     const results = resp.hits.hits.map((h) => h._source);
-    // await this.cache.set(key, JSON.stringify(results), 300);
     await setCompression(this.cache, key, results, 300);
     return results;
   }

@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
-import { SearchengineModule } from '../src/searchengine.module';
+import { SearchengineModule } from '../src/searchengine/searchengine.module';
 
 describe('SearchengineController (e2e)', () => {
   let app: INestApplication;
