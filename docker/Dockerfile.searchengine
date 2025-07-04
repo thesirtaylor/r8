@@ -1,0 +1,35 @@
+# docker/Dockerfile.searchengine
+
+# === Stage 1: Build ===
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Enable Yarn via Corepack
+RUN corepack enable && corepack prepare yarn@1.22.19 --activate
+
+# Copy dependency and config files
+COPY ../package.json ../yarn.lock ../tsconfig*.json ../nest-cli.json ./
+COPY ../libs ./libs
+COPY ../apps ./apps
+
+# Install dependencies
+RUN yarn install --frozen-lockfile
+
+# Build commonlib and searchengine only
+RUN yarn build:searchengine
+
+# === Stage 2: Runtime ===
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Enable Yarn in runtime too (if needed for CLI tasks)
+RUN corepack enable && corepack prepare yarn@stable --activate
+
+# Copy only what's needed to run
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+COPY ../package.json ./
+
+CMD ["node", "dist/apps/searchengine/main"]
