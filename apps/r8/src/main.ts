@@ -1,7 +1,10 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { AppDataSource } from 'data-source';
-import { AppLoggerService, LoggingInterceptor } from '@app/commonlib';
+import {
+  AppLoggerService,
+  LoggingInterceptor,
+  AppDataSource,
+} from '@app/commonlib';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 
@@ -41,6 +44,6 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(4002);
+  await app.listen(process.env.PORT_R8);
 }
 bootstrap();

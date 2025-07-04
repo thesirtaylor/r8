@@ -3,14 +3,19 @@ import { UsersModule } from './users/users.module';
 import { RateEntitiesModule } from './rate_entities/rate_entities.module';
 import { RatingsModule } from './ratings/ratings.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AppDataSource } from 'data-source';
-import { LoggerModule, MessagingModule, RedisModule } from '@app/commonlib';
-import { ConfigModule } from '@nestjs/config';
+import {
+  LoggerModule,
+  MessagingModule,
+  RedisModule,
+  AppDataSource,
+} from '@app/commonlib';
+// import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    // ConfigModule.forRoot({ isGlobal: true }),
     LoggerModule,
     TypeOrmModule.forRoot(AppDataSource.options),
     UsersModule,
@@ -20,7 +25,7 @@ import { AuthModule } from './auth/auth.module';
     MessagingModule,
     AuthModule,
   ],
-  controllers: [],
+  controllers: [AppController],
   providers: [],
 })
 export class AppModule {}

@@ -9,7 +9,7 @@ import {
   RateEntityRepository,
 } from '@app/commonlib';
 import { ElasticsearchModule } from '@nestjs/elasticsearch';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { OutboxService } from './outbox/outbox.service';
 import { Outbox, OutboxRepository } from '@app/commonlib';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -17,14 +17,11 @@ import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
+    ConfigModule,
     AuthModule,
     TypeOrmModule.forFeature([RateEntity, Outbox]),
-    ElasticsearchModule.registerAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        node: configService.get<string>('ELASTICSEARCH_NODE'),
-      }),
-      inject: [ConfigService],
+    ElasticsearchModule.register({
+      node: process.env.ELASTICSEARCH_NODE,
     }),
     RedisModule,
     ScheduleModule.forRoot(),
