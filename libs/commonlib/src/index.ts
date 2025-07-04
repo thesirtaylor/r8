@@ -7,6 +7,7 @@ export * from './message';
 export * from './interfaces';
 export * from './utility';
 export * from './interceptor';
+export * from './db';
 /**
  * TODO
  *
