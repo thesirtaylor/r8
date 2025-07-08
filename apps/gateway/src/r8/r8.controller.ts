@@ -39,7 +39,7 @@ export class R8Controller {
   // }
 
   @Post('create')
-  // @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard)
   @ApiSecurity('access-token')
   @ApiOperation({ summary: 'Create a new rateable entity' })
   @ApiResponse({
