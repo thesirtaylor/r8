@@ -9,13 +9,10 @@ import {
   RedisModule,
   AppDataSource,
 } from '@app/commonlib';
-// import { ConfigModule } from '@nestjs/config';
-import { AuthModule } from './auth/auth.module';
 import { AppController } from './app.controller';
 
 @Module({
   imports: [
-    // ConfigModule.forRoot({ isGlobal: true }),
     LoggerModule,
     TypeOrmModule.forRoot(AppDataSource.options),
     UsersModule,
@@ -23,7 +20,6 @@ import { AppController } from './app.controller';
     RatingsModule,
     RedisModule,
     MessagingModule,
-    AuthModule,
   ],
   controllers: [AppController],
   providers: [],

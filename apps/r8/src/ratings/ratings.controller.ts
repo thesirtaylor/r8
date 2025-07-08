@@ -8,7 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { RatingsService } from './ratings.service';
-import { JwtAuthGuard } from '../auth/guards/jwt.oauth-guard';
+import { JwtAuthGuard } from '../../../gateway/src/auth/guards/jwt.oauth-guard';
 import {
   AppLoggerService,
   CreateEntityRatingDto,
@@ -29,7 +29,7 @@ import {
   GlobalRatingStatsResponseDto,
   PaginatedRatingsResponseDto,
   RatingDetailResponseDto,
-} from '../openAPI';
+} from '../../../gateway/src/openAPI';
 
 @Controller('ratings')
 export class RatingsController {

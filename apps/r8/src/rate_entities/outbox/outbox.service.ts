@@ -1,63 +1,34 @@
-import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-import { Cron } from '@nestjs/schedule';
-import {
-  AppLoggerService,
-  Outbox,
-  RateEntity,
-  OutboxRepository,
-} from '@app/commonlib';
-import { firstValueFrom } from 'rxjs';
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { AppLoggerService } from '@app/commonlib';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 
 @Injectable()
 export class OutboxService implements OnModuleInit {
   constructor(
-    private readonly repository: OutboxRepository,
-    @Inject('DATA_STREAM') private readonly client: ClientProxy,
+    @InjectQueue('outbox-processor') private outboxQueue: Queue,
     private readonly logger: AppLoggerService,
   ) {}
 
   async onModuleInit() {
-    await this.client.connect();
-  }
-
-  @Cron('*/5 * * * * *')
-  async emitPendingEntities() {
-    const pending = await this.repository.find({
-      where: { status: 'pending' },
-    });
-
-    if (!pending.length) return;
-
-    const bulkPayload = pending.map((e) => JSON.parse(e.payload) as RateEntity);
-
-    await firstValueFrom(
-      this.client.emit<string, RateEntity[]>(
-        'rate-entity-created',
-        bulkPayload,
-      ),
+    await this.outboxQueue.add(
+      'process-pending-entities',
+      {},
+      {
+        repeat: { cron: '*/5 * * * * *' },
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 2000 },
+        removeOnComplete: true,
+        removeOnFail: true,
+      },
     );
 
-    await this.repository
-      .createQueryBuilder()
-      .update(Outbox)
-      .set({ status: 'published', publishedAt: () => 'CURRENT_TIMESTAMP' })
-      .whereInIds(pending.map((e) => e.id))
-      .execute();
-
-    this.logger.log(
-      `Dispatched and marked ${pending.length} events as published.`,
+    await this.outboxQueue.add(
+      'cleanup-old-outbox',
+      {},
+      {
+        repeat: { cron: '0 2 1 * *' },
+      },
     );
-  }
-
-  @Cron('0 2 1 * *')
-  async cleanEmitedOutbox() {
-    const res = await this.repository
-      .createQueryBuilder()
-      .delete()
-      .from(Outbox)
-      .where('status = :status', { status: 'published' })
-      .execute();
-    this.logger.log(`Deleted ${res.affected} published outbox rows`);
   }
 }

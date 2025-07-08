@@ -1,10 +1,9 @@
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-} from '@nestjs/common';
-import { RateEntityRepository } from '@app/commonlib';
+  ParseCatchResponse,
+  RateEntityRepository,
+  toSocialLinks,
+} from '@app/commonlib';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 import {
   CreateRateEntityDto,
@@ -17,11 +16,12 @@ import {
   setCompression,
 } from '@app/commonlib';
 import { ILike, In } from 'typeorm';
-import { ClientProxy } from '@nestjs/microservices';
+import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { createHash } from 'crypto';
 import { DataSource } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
-import { validateOrReject } from 'class-validator';
+import { CreateRateEntityRequest } from '@app/commonlib/protos_output/r8.pb';
+import { status as gRPCstatus } from '@grpc/grpc-js';
 
 @Injectable()
 export class RateEntitiesService {
@@ -43,7 +43,6 @@ export class RateEntitiesService {
 
     const cachekey = `entities:search:${type || 'all'}:${q}`;
 
-    // const cached = await this.cache.get(cachekey);
     const cached = (await getCompression(this.cache, cachekey)) as RateEntity[];
 
     if (cached) return cached;
@@ -89,36 +88,77 @@ export class RateEntitiesService {
       entities = await this.repository.find({ where, take: 10 });
     }
 
-    // await this.cache.set(cachekey, JSON.stringify(entities), 300);
     await setCompression(this.cache, cachekey, entities, 300);
 
     return entities;
   }
 
-  async create(dto: CreateRateEntityDto) {
-    const idempotencyKey = this.makeIdempotencyKey(dto);
-    return this.ds.transaction(async (manager) => {
-      try {
-        await manager.getRepository(Outbox).insert({
-          eventType: 'rate-entity-created',
-          payload: JSON.stringify(dto),
-          status: 'pending',
-          idempotencyKey,
-        });
-      } catch (error) {
-        if (error.code === '23505') {
-          throw new ConflictException('Duplicate operation');
+  async create(dto: CreateRateEntityRequest) {
+    try {
+      const idempotencyKey = this.makeIdempotencyKey(dto);
+      const saved = await this.ds.transaction(async (manager) => {
+        try {
+          await manager.getRepository(Outbox).insert({
+            eventType: 'rate-entity-created',
+            payload: JSON.stringify(dto),
+            status: 'pending',
+            idempotencyKey,
+          });
+        } catch (error) {
+          if (error.code === '23505') {
+            throw new RpcException({
+              code: gRPCstatus.ALREADY_EXISTS,
+              message: 'Duplicate operation',
+            });
+          }
+          throw new RpcException({
+            code: gRPCstatus.INTERNAL,
+            message: 'Failed to write outbox event',
+            details: error.message,
+          });
         }
-        throw error;
+        const entitydto = plainToInstance(CreateRateEntityDto, dto);
+        const createEntity = manager
+          .getRepository(RateEntity)
+          .create(entitydto);
+        const saved = await manager
+          .getRepository(RateEntity)
+          .save(createEntity);
+        return saved;
+      });
+      if (!saved) {
+        throw new RpcException({
+          code: gRPCstatus.INTERNAL,
+          message: 'Entity not saved',
+        });
       }
-      const entitydto = plainToInstance(CreateRateEntityDto, dto);
-      await validateOrReject(entitydto);
-      const createEntity = manager.getRepository(RateEntity).create(entitydto);
-      return await manager.getRepository(RateEntity).save(createEntity);
-    });
+      return {
+        id: saved.id,
+        name: saved.name,
+        type: saved.type,
+        street: saved.street,
+        city: saved.city,
+        state: saved.state,
+        country: saved.country,
+        googlePlaceId: saved.googlePlaceId,
+        socials: toSocialLinks(saved.socials ?? {}),
+        latitude: saved.latitude,
+        longitude: saved.longitude,
+        createdAt: saved.createdAt.toISOString(),
+        updatedAt: saved.updatedAt.toISOString(),
+      };
+    } catch (error) {
+      this.logger.error(
+        `RateEntitiesService.create failed: ${error?.message}`,
+        error?.stack,
+      );
+
+      if (error instanceof RpcException) throw error;
+      ParseCatchResponse(error.code, error);
+    }
   }
 
-  private makeIdempotencyKey(dto: CreateRateEntityDto): string {
+  private makeIdempotencyKey(dto: CreateRateEntityRequest): string {
     return createHash('sha256').update(JSON.stringify(dto)).digest('hex');
   }
 }

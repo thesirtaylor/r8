@@ -9,22 +9,27 @@ import {
   RateEntityRepository,
 } from '@app/commonlib';
 import { ElasticsearchModule } from '@nestjs/elasticsearch';
-import { ConfigModule } from '@nestjs/config';
 import { OutboxService } from './outbox/outbox.service';
 import { Outbox, OutboxRepository } from '@app/commonlib';
-import { ScheduleModule } from '@nestjs/schedule';
-import { AuthModule } from '../auth/auth.module';
+import { BullModule } from '@nestjs/bull';
+import { OutboxProcessor } from './outbox/outbox.processor';
 
 @Module({
   imports: [
-    ConfigModule,
-    AuthModule,
     TypeOrmModule.forFeature([RateEntity, Outbox]),
     ElasticsearchModule.register({
       node: process.env.ELASTICSEARCH_NODE,
     }),
     RedisModule,
-    ScheduleModule.forRoot(),
+    BullModule.forRoot({
+      redis: {
+        host: process.env.REDIS_HOST,
+        port: parseInt(process.env.REDIS_PORT),
+      },
+    }),
+    BullModule.registerQueue({
+      name: 'outbox-processor',
+    }),
   ],
   controllers: [RateEntitiesController],
   providers: [
@@ -33,6 +38,7 @@ import { AuthModule } from '../auth/auth.module';
     RedisService,
     OutboxService,
     OutboxRepository,
+    OutboxProcessor,
   ],
 })
 export class RateEntitiesModule {}

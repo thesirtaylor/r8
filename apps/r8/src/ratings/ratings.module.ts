@@ -8,7 +8,7 @@ import {
   RedisModule,
   RedisService,
 } from '@app/commonlib';
-import { AuthModule } from '../auth/auth.module';
+import { AuthModule } from '../../../gateway/src/auth/auth.module';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Rating]), AuthModule, RedisModule],

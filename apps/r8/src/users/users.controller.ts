@@ -1,7 +1,7 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { UserResponseDto } from '../openAPI';
+import { UserResponseDto } from '../../../gateway/src/openAPI';
 
 @Controller('users')
 export class UsersController {
