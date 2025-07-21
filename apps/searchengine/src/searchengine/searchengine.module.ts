@@ -3,12 +3,12 @@ import { SearchengineController } from './searchengine.controller';
 import { SearchengineService } from './searchengine.service';
 import { ElasticsearchModule } from '@nestjs/elasticsearch';
 import {
-  AppLoggerService,
+  // AppLoggerService,
   Outbox,
   OutboxRepository,
   RateEntity,
   RedisModule,
-  RedisService,
+  // RedisService,
 } from '@app/commonlib';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -29,8 +29,8 @@ if (!nodeUrl) {
   controllers: [SearchengineController],
   providers: [
     SearchengineService,
-    RedisService,
-    AppLoggerService,
+    // RedisService,
+    // AppLoggerService,
     OutboxRepository,
   ],
 })

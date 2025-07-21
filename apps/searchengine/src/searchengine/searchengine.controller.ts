@@ -1,14 +1,17 @@
-import { Controller, Get, Logger, Query } from '@nestjs/common';
+import { Controller, Logger } from '@nestjs/common';
 import { SearchengineService } from './searchengine.service';
 import {
   Outbox,
   OutboxRepository,
   RateEntity,
   RedisService,
-  SearchRateEntityDto,
 } from '@app/commonlib';
-import { EventPattern, Payload } from '@nestjs/microservices';
+import { EventPattern, GrpcMethod, Payload } from '@nestjs/microservices';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
+import {
+  SEARCH_ENGINE_SERVICE_NAME,
+  SearchRequest,
+} from '@app/commonlib/protos_output/searchengine.pb';
 
 @Controller('auto-suggest')
 export class SearchengineController {
@@ -21,9 +24,10 @@ export class SearchengineController {
     private readonly esService: ElasticsearchService,
   ) {}
 
-  @Get('search')
-  async Search(@Query() dto: SearchRateEntityDto) {
-    return this.searchengineService.search(dto.q);
+  @GrpcMethod(SEARCH_ENGINE_SERVICE_NAME, 'search')
+  async Search(payload: SearchRequest) {
+    const { q } = payload;
+    return this.searchengineService.search(q);
   }
 
   @EventPattern('rate-entity-created')
