@@ -25,7 +25,8 @@ interface locationFilter {
 }
 
 export interface IGlobalRatingStats {
-  interval: 'day' | 'week' | 'month' | 'year';
+  // interval: 'day' | 'week' | 'month' | 'year';
+  interval: string;
   cursor?: string;
   limit?: number;
   locationFilter?: locationFilter;

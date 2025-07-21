@@ -9,6 +9,7 @@ export enum EntityType {
   SERVICE = 'service',
   EXPEREINCE = 'experience',
   EVENT = 'event',
+  PLACE = 'place',
 }
 
 @Entity({ name: 'entities' })

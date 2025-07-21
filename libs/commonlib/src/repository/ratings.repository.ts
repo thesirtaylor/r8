@@ -44,7 +44,7 @@ export class RatingRepository extends BaseRepository<Rating> {
     const results = await query.getRawMany();
 
     const hasNextPage = results.length > limit;
-    const data = results.slice(0, limit);
+    const data = results.slice(0, limit) ?? [];
 
     let nextCursor = null;
     if (hasNextPage) {
@@ -56,7 +56,7 @@ export class RatingRepository extends BaseRepository<Rating> {
 
     return {
       data,
-      nextCursor,
+      nextCursor: nextCursor.id,
       hasNextPage,
     };
   }

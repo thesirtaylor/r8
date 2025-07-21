@@ -53,7 +53,7 @@ export class SocialLinksDto {
   @ApiPropertyOptional({ format: 'uri' })
   @IsOptional()
   @IsUrl()
-  truth_socials?: string;
+  truthSocials?: string;
 
   @ApiPropertyOptional({ format: 'uri' })
   @IsOptional()

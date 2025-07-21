@@ -28,4 +28,13 @@ export class RedisService {
   async keys(key: string) {
     return await this.redis.keys(key);
   }
+
+  async setOnce(key: string, value: any, expiry: number) {
+    const result = await this.redis.set(key, value, 'EX', expiry, 'NX');
+    return result === 'OK';
+  }
+
+  async ping() {
+    return await this.redis.ping();
+  }
 }

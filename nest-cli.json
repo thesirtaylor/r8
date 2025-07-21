@@ -5,7 +5,13 @@
   "compilerOptions": {
     "deleteOutDir": true,
     "webpack": true,
-    "tsConfigPath": "apps/r8/tsconfig.app.json"
+    "tsConfigPath": "apps/r8/tsconfig.app.json",
+    "assets": [
+      {
+        "include": "**/*.proto",
+        "outDir": "dist"
+      }
+    ]
   },
   "monorepo": true,
   "root": "apps/r8",
@@ -35,6 +41,15 @@
       "sourceRoot": "libs/commonlib/src",
       "compilerOptions": {
         "tsConfigPath": "libs/commonlib/tsconfig.lib.json"
+      }
+    },
+    "gateway": {
+      "type": "application",
+      "root": "apps/gateway",
+      "entryFile": "main",
+      "sourceRoot": "apps/gateway/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/gateway/tsconfig.app.json"
       }
     }
   }

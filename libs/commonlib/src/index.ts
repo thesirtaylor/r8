@@ -8,6 +8,9 @@ export * from './interfaces';
 export * from './utility';
 export * from './interceptor';
 export * from './db';
+export * from './protopath';
+export * from './response-handlers';
+export * from './health';
 /**
  * TODO
  *
