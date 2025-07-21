@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { ConflictException, Module } from '@nestjs/common';
 import { UsersModule } from './users/users.module';
 import { RateEntitiesModule } from './rate_entities/rate_entities.module';
 import { RatingsModule } from './ratings/ratings.module';
@@ -8,8 +8,14 @@ import {
   MessagingModule,
   RedisModule,
   AppDataSource,
+  HealthModule,
 } from '@app/commonlib';
-import { AppController } from './app.controller';
+
+const nodeUrl = process.env.ELASTICSEARCH_NODE;
+
+if (!nodeUrl) {
+  throw new ConflictException('ELASTICSEARCH_NODE not set');
+}
 
 @Module({
   imports: [
@@ -20,8 +26,13 @@ import { AppController } from './app.controller';
     RatingsModule,
     RedisModule,
     MessagingModule,
+    HealthModule.register({
+      elasticsearchConfig: {
+        node: process.env.ELASTICSEARCH_NODE,
+      },
+    }),
   ],
-  controllers: [AppController],
+  controllers: [],
   providers: [],
 })
 export class AppModule {}
