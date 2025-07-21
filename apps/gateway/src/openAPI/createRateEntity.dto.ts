@@ -8,17 +8,17 @@ export class RateEntityResponseDto {
   @ApiProperty()
   name: string;
 
-  @ApiProperty()
-  street: string;
+  @ApiPropertyOptional()
+  street?: string;
 
-  @ApiProperty()
-  city: string;
+  @ApiPropertyOptional()
+  city?: string;
 
-  @ApiProperty()
-  state: string;
+  @ApiPropertyOptional()
+  state?: string;
 
-  @ApiProperty()
-  country: string;
+  @ApiPropertyOptional()
+  country?: string;
 
   @ApiPropertyOptional()
   googlePlaceId?: string;

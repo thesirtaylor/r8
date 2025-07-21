@@ -34,7 +34,7 @@ export class PaginatedRatingsResponseDto {
   data: RatingResponseItemDto[];
 
   @ApiProperty({ format: 'uuid' })
-  id: string;
+  nextCursor: string;
 
   @ApiProperty()
   hasNextPage: boolean;
