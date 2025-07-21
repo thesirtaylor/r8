@@ -1,26 +1,28 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   ParseCatchResponse,
   RateEntityRepository,
   toSocialLinks,
 } from '@app/commonlib';
-import { ElasticsearchService } from '@nestjs/elasticsearch';
 import {
   CreateRateEntityDto,
   RateEntity,
   RedisService,
-  SearchRateEntityDto,
   AppLoggerService,
   Outbox,
   getCompression,
   setCompression,
 } from '@app/commonlib';
-import { ILike, In } from 'typeorm';
-import { ClientProxy, RpcException } from '@nestjs/microservices';
+import { ILike } from 'typeorm';
+import { RpcException } from '@nestjs/microservices';
 import { createHash } from 'crypto';
 import { DataSource } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
-import { CreateRateEntityRequest } from '@app/commonlib/protos_output/r8.pb';
+import {
+  CreateRateEntityRequest,
+  RateEntityListResponse,
+  SearchRateEntityRequest,
+} from '@app/commonlib/protos_output/r8.pb';
 import { status as gRPCstatus } from '@grpc/grpc-js';
 
 @Injectable()
@@ -29,21 +31,26 @@ export class RateEntitiesService {
   private readonly stream = 'rate-entity-created';
   constructor(
     private readonly repository: RateEntityRepository,
-    private readonly esService: ElasticsearchService,
     private readonly cache: RedisService,
     private readonly logger: AppLoggerService,
     private ds: DataSource,
-    @Inject('DATA_STREAM') private readonly client: ClientProxy,
   ) {}
 
-  async search(dto: SearchRateEntityDto): Promise<RateEntity[]> {
+  async search(dto: SearchRateEntityRequest): Promise<RateEntityListResponse> {
     const { q, type } = dto;
 
-    if (!q) throw new BadRequestException('`q` (query) must be provided');
+    if (!q)
+      throw new RpcException({
+        code: gRPCstatus.INVALID_ARGUMENT,
+        message: '`q` (query) must be provided',
+      });
 
     const cachekey = `entities:search:${type || 'all'}:${q}`;
 
-    const cached = (await getCompression(this.cache, cachekey)) as RateEntity[];
+    const cached: RateEntityListResponse = await getCompression(
+      this.cache,
+      cachekey,
+    );
 
     if (cached) return cached;
 
@@ -66,31 +73,15 @@ export class RateEntitiesService {
 
     if (type) must.push({ term: { type } });
 
-    const esResp = await this.esService.search<RateEntity>({
-      index: 'entities',
-      body: { query: { bool: { must } } },
+    const where: any = { name: ILike(`%${q}%`) };
+    if (type) where.type = type;
+    const entities = await this.repository.find({ where, take: 10 });
+    const data = entities.map((entity) => {
+      return this.rate_data(entity);
     });
-
-    const ids = esResp.hits.hits.map((h) => h._source.id);
-    let entities: RateEntity[];
-
-    if (ids.length) {
-      entities = await this.repository.find({ where: { id: In(ids) } });
-
-      const orderMap = ids.reduce(
-        (m, id, i) => ((m[id] = i), m),
-        {} as Record<string, number>,
-      );
-      entities.sort((a, b) => orderMap[a.id] - orderMap[b.id]);
-    } else {
-      const where: any = { name: ILike(`%${q}%`) };
-      if (type) where.type = type;
-      entities = await this.repository.find({ where, take: 10 });
-    }
-
-    await setCompression(this.cache, cachekey, entities, 300);
-
-    return entities;
+    const response: RateEntityListResponse = { data };
+    await setCompression(this.cache, cachekey, response, 300);
+    return response;
   }
 
   async create(dto: CreateRateEntityRequest) {
@@ -132,21 +123,7 @@ export class RateEntitiesService {
           message: 'Entity not saved',
         });
       }
-      return {
-        id: saved.id,
-        name: saved.name,
-        type: saved.type,
-        street: saved.street,
-        city: saved.city,
-        state: saved.state,
-        country: saved.country,
-        googlePlaceId: saved.googlePlaceId,
-        socials: toSocialLinks(saved.socials ?? {}),
-        latitude: saved.latitude,
-        longitude: saved.longitude,
-        createdAt: saved.createdAt.toISOString(),
-        updatedAt: saved.updatedAt.toISOString(),
-      };
+      return this.rate_data(saved);
     } catch (error) {
       this.logger.error(
         `RateEntitiesService.create failed: ${error?.message}`,
@@ -160,5 +137,22 @@ export class RateEntitiesService {
 
   private makeIdempotencyKey(dto: CreateRateEntityRequest): string {
     return createHash('sha256').update(JSON.stringify(dto)).digest('hex');
+  }
+  private rate_data(data: RateEntity) {
+    return {
+      id: data.id,
+      name: data.name,
+      type: data.type,
+      street: data.street,
+      city: data.city,
+      state: data.state,
+      country: data.country,
+      googlePlaceId: data.googlePlaceId,
+      socials: toSocialLinks(data.socials ?? {}),
+      latitude: data.latitude,
+      longitude: data.longitude,
+      createdAt: data.createdAt.toISOString(),
+      updatedAt: data.updatedAt.toISOString(),
+    };
   }
 }

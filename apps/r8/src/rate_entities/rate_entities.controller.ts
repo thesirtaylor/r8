@@ -1,10 +1,10 @@
 import { RateEntitiesService } from './rate_entities.service';
-import { CreateRateEntityDto, RateEntity } from '@app/commonlib';
-import { SearchRateEntityDto } from '@app/commonlib';
 import {
   CreateRateEntityRequest,
   R8_SERVICE_NAME,
+  RateEntityListResponse,
   RateEntityResponse,
+  SearchRateEntityRequest,
 } from '@app/commonlib/protos_output/r8.pb';
 import { Controller } from '@nestjs/common';
 import { GrpcMethod } from '@nestjs/microservices';
@@ -14,10 +14,13 @@ import { Observable } from 'rxjs';
 export class RateEntitiesController {
   constructor(private readonly rateEntitiesService: RateEntitiesService) {}
 
-  // @GrpcMethod()
-  // async search(): Promise<RateEntity[]> {
-  //   return this.rateEntitiesService.search(dto);
-  // }
+  @GrpcMethod(R8_SERVICE_NAME, 'searchRateEntities')
+  async searchRateEntities(
+    payload: SearchRateEntityRequest,
+  ): Promise<RateEntityListResponse | Observable<RateEntityListResponse>> {
+    return this.rateEntitiesService.search(payload);
+  }
+
   @GrpcMethod(R8_SERVICE_NAME, 'createRateEntity')
   async createRateEntity(
     payload: CreateRateEntityRequest,
