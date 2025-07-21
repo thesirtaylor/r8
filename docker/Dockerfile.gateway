@@ -1,0 +1,35 @@
+# docker/Dockerfile.r8
+
+# === Stage 1: Build ===
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Enable Corepack to use Yarn
+RUN corepack enable && corepack prepare yarn@1.22.19 --activate
+
+# Copy files
+COPY ../package.json ../yarn.lock ../tsconfig*.json ../nest-cli.json ./
+COPY ../libs ./libs
+COPY ../apps ./apps
+
+# Install dependencies
+RUN yarn install --frozen-lockfile
+
+# Build r8 and commonlib only
+RUN yarn build:r8
+
+# === Stage 2: Runtime ===
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Enable Corepack again (for consistency)
+RUN corepack enable && corepack prepare yarn@stable --activate
+
+# Copy runtime dependencies and dist output only
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+COPY ../package.json ./
+
+CMD ["node", "dist/apps/gateway/main"]
