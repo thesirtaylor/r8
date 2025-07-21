@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package searchengine;
+
+service SearchEngineService {
+  rpc Search (SearchRequest) returns (SearchResponse);
+}
+
+message SearchRequest {
+    string q = 1;
+    optional string type = 2; 
+}
+
+message SearchResponse {
+  repeated RateEntitySearchResult data = 1;
+}
+
+message RateEntitySearchResult {
+  string id = 1;
+  string name = 2;
+  string type = 3;
+  string street = 4;
+  string city = 5;
+  string state = 6;
+  string country = 7;
+  string googlePlaceId = 8;
+  map<string, string> socials = 9;
+  double latitude = 10;
+  double longitude = 11;
+}

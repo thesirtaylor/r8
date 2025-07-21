@@ -1,0 +1,201 @@
+syntax = "proto3";
+
+package r8;
+
+service R8Service {
+  rpc CreateRateEntity (CreateRateEntityRequest) returns (RateEntityResponse);
+  rpc FindRatingsForEntity (FindRatingsQuery) returns (PaginatedRatingsResponse);
+  rpc SearchRateEntities (SearchRateEntityRequest) returns (RateEntityListResponse);
+  rpc CreateEntityRating (CreateEntityRatingRequest) returns (RatingDetailResponse);
+  rpc GetGlobalRatingStats (GlobalStatsQueryRequest) returns (GlobalRatingStatsResponse);
+  rpc GetRatingStat(GetRatingStatRequest) returns (GetRatingStatResponse);
+  rpc GetUser(GetUserRequest) returns (UserResponse);
+
+}
+
+message GetUserRequest {
+  string id = 1;
+}
+
+message UserResponse {
+  string id = 1;
+  string createdAt = 2;
+  string updatedAt = 3;
+  optional string username = 4; // optional field
+  string name = 5;
+  string email = 6;
+  string avatar = 7;
+}
+
+
+message GetRatingStatRequest {
+  string id = 1;
+}
+
+message GetRatingStatResponse {
+  string total_ratings = 1;
+  string normalized_mean_score = 2;
+  map<string, int32> score_counts = 3;
+}
+
+message GlobalStatsQueryRequest {
+  string interval = 1; // 'day' | 'week' | 'month' | 'year'
+  string from = 2;
+  string to = 3;
+  string cursor = 4;
+  int32 limit = 5;
+  string city = 6;
+  string state = 7;
+  string country = 8;
+  string keyword = 9;
+}
+
+message GlobalRatingStat {
+  string interval = 1;
+  string entityId = 2;
+  string total_ratings = 3;
+  string minCreatedAt = 4;
+  string maxCreatedAt = 5;
+  string normalized_mean_score = 6;
+  map<string, int32> score_counts = 7;
+  Entity entity = 8;
+}
+
+message Entity {
+  string id = 1;
+  string name = 2;
+}
+
+message NextCursor {
+  string cursor = 1;
+}
+
+message GlobalRatingStatsResponse {
+  repeated GlobalRatingStat data = 1;
+  NextCursor nextCursor = 2;
+  bool hasNextPage = 3;
+}
+
+message CreateEntityRatingRequest {
+  string entityId = 1;
+  string userId = 2;
+  int32 score = 3;
+  optional string comment = 4;
+  repeated string tags = 5;
+  optional bool anonymous = 6;
+}
+
+message EntityReference {
+  string id = 1;
+}
+
+message UserReference {
+  string id = 1;
+}
+
+message RatingDetailResponse {
+  int32 score = 1;
+  string comment = 2;
+  repeated string tags = 3;
+  bool anonymous = 4;
+  EntityReference entity = 5;
+  UserReference user = 6;
+  string id = 7;
+  string createdAt = 8;
+  string updatedAt = 9;
+}
+
+message SocialLinks {
+  optional string facebook = 1;
+  optional string twitter = 2;
+  optional string linkedin = 3;
+  optional string instagram = 4;
+  optional string youtube = 5;
+  optional string wechat = 6;
+  optional string telegram = 7;
+  optional string url = 8;
+  optional string truthSocials = 9;
+  optional string tiktok = 10;
+  optional string threads = 11;
+  optional string twitch = 12;
+  optional string snapchat = 13;
+  optional string reddit = 14;
+  optional string quora = 15;
+  optional string discord = 16;
+}
+
+message CreateRateEntityRequest {
+  string type = 1;
+  string name = 2;
+  optional string street = 3;
+  optional string city = 4;
+  optional string state = 5;
+  optional string country = 6;
+  optional string googlePlaceId = 7;
+  optional SocialLinks socials = 8;
+}
+
+message RateEntityResponse {
+  string id = 1;
+  string type = 2;
+  optional string name = 3;
+  optional string street = 4;
+  optional string city = 5;
+  optional string state = 6;
+  optional string country = 7;
+  optional string googlePlaceId = 8;
+  optional double latitude = 9;
+  optional double longitude = 10;
+  optional SocialLinks socials = 11;
+  string createdAt = 12;
+  string updatedAt = 13;
+}
+
+message FindRatingsQuery {
+  string entityId = 1;
+  optional int32 limit = 2;            
+  optional string cursor_id = 3;       
+}
+
+message RatingResponseItem {
+  string id = 1;
+  int32 score = 2;
+  string comment = 3;
+  repeated string tags = 4;
+  bool anonymous = 5;
+  string createdAt = 6;     
+  string name = 7;
+  string email = 8;
+  string avatar = 9;
+}
+
+message PaginatedRatingsResponse {
+  repeated RatingResponseItem data = 1;
+  string nextCursor = 2;
+  bool hasNextPage = 3;
+}
+
+message SearchRateEntityRequest {
+  string q = 1;
+  optional string type = 2;
+}
+
+message RateEntity {
+  string id = 1;
+  string type = 2;
+  optional string name = 3;
+  optional string street = 4;
+  optional string city = 5;
+  optional string state = 6;
+  optional string country = 7;
+  optional string googlePlaceId = 8;
+  optional SocialLinks socials = 9;
+  optional double latitude = 10;
+  optional double longitude = 11;
+  optional string createdAt = 12; 
+  optional string updatedAt = 13;
+}
+
+message RateEntityListResponse {
+  repeated RateEntity data = 1;
+}
