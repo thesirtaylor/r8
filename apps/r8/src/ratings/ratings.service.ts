@@ -10,6 +10,11 @@ import {
   IGlobalRatingStats,
   IRatingStats,
 } from '@app/commonlib';
+import {
+  GlobalRatingStatsResponse,
+  PaginatedRatingsResponse,
+  RatingDetailResponse,
+} from '@app/commonlib/protos_output/r8.pb';
 import { Injectable } from '@nestjs/common';
 import { createHash } from 'crypto';
 
@@ -37,15 +42,19 @@ export class RatingsService {
     const cacheKey = cacheKeyParts.join('|');
 
     try {
-      const cache = await getCompression(this.cache, cacheKey);
+      const cache: PaginatedRatingsResponse = await getCompression(
+        this.cache,
+        cacheKey,
+      );
       if (cache) {
         return cache;
       } else {
         const result =
           await this.ratingRepository.findRatingsOfEntityWithCursor(payload);
 
-        await setCompression(this.cache, cacheKey, result, 300);
-        return result;
+        const response: PaginatedRatingsResponse = result;
+        await setCompression(this.cache, cacheKey, response, 300);
+        return response;
       }
     } catch (error) {
       this.logger.error({ error });
@@ -56,7 +65,7 @@ export class RatingsService {
   async RateEntity(payload: ICreateRating) {
     try {
       const ratingData = {
-        user: { id: payload.userId },
+        user: payload.anonymous == false ? { id: payload.userId } : null,
         entity: { id: payload.entityId },
         score: payload.score,
         comment: payload.comment,
@@ -65,9 +74,20 @@ export class RatingsService {
       };
       const createRating = this.ratingRepository.create(ratingData);
       const saveRating = await this.ratingRepository.save(createRating);
+      const response: RatingDetailResponse = {
+        id: saveRating.id,
+        score: saveRating.score,
+        comment: saveRating.comment,
+        tags: saveRating.tags ?? [],
+        anonymous: saveRating.anonymous,
+        entity: { id: saveRating.entity?.id },
+        user: saveRating.anonymous ? undefined : { id: saveRating.user?.id },
+        createdAt: saveRating.createdAt.toISOString(),
+        updatedAt: saveRating.updatedAt.toISOString(),
+      };
       const cacheKeyPattern = `entity_rating|${payload.entityId}|*`;
       await deleteCache(cacheKeyPattern, this.cache);
-      return saveRating;
+      return response;
     } catch (error) {
       this.logger.error({ error });
       throw error;
@@ -98,14 +118,18 @@ export class RatingsService {
     const hash = createHash('sha256').update(cacheKeyParts).digest('hex');
     const finalkey = `global_stats_hash:${hash}`;
     try {
-      const cache = await getCompression(this.cache, finalkey);
+      const cache: GlobalRatingStatsResponse = await getCompression(
+        this.cache,
+        finalkey,
+      );
       if (cache) {
         return cache;
       } else {
         const result =
           await this.ratingRepository.getGlobalRatingStats(payload);
-        await setCompression(this.cache, finalkey, result, 300);
-        return result;
+        const response: GlobalRatingStatsResponse = result;
+        await setCompression(this.cache, finalkey, response, 300);
+        return response;
       }
     } catch (error) {
       this.logger.error({ error });
