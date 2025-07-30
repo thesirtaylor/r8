@@ -11,6 +11,7 @@ import {
   IRatingStats,
 } from '@app/commonlib';
 import {
+  GetRatingStatResponse,
   GlobalRatingStatsResponse,
   PaginatedRatingsResponse,
   RatingDetailResponse,
@@ -95,7 +96,7 @@ export class RatingsService {
   }
 
   async GlobalRatingStat(payload: IGlobalRatingStats) {
-    const { from, to, cursor, locationFilter, keyword } = payload;
+    const { from, to, cursor, city, state, country, keyword } = payload;
     const limit: number = payload.limit ?? 20;
     const interval: string = !payload.interval ? 'day' : payload.interval;
     const from_ = from ?? '';
@@ -109,9 +110,9 @@ export class RatingsService {
       `to:${to_}`,
       `cursor:${cursorVal}`,
       `limit:${limit}`,
-      `city:${locationFilter.city ?? ''}`,
-      `state:${locationFilter.state ?? ''}`,
-      `country:${locationFilter.country ?? ''}`,
+      `city:${city ?? ''}`,
+      `state:${state ?? ''}`,
+      `country:${country ?? ''}`,
       `keyword:${keyword ?? ''}`,
     ].join('|');
 
@@ -125,11 +126,10 @@ export class RatingsService {
       if (cache) {
         return cache;
       } else {
-        const result =
+        const result: GlobalRatingStatsResponse =
           await this.ratingRepository.getGlobalRatingStats(payload);
-        const response: GlobalRatingStatsResponse = result;
-        await setCompression(this.cache, finalkey, response, 300);
-        return response;
+        await setCompression(this.cache, finalkey, result, 300);
+        return result;
       }
     } catch (error) {
       this.logger.error({ error });
@@ -144,11 +144,16 @@ export class RatingsService {
     const hash = createHash('sha256').update(cacheKeyParts).digest('hex');
     const finalkey = `global_stats_hash:${hash}`;
     try {
-      const cache = await getCompression(this.cache, finalkey);
+      const cache: GetRatingStatResponse = await getCompression(
+        this.cache,
+        finalkey,
+      );
       if (cache) {
         return cache;
       } else {
-        const result = await this.ratingRepository.getEntityRatingStat(id);
+        const result: GetRatingStatResponse =
+          await this.ratingRepository.getEntityRatingStat(id);
+
         await setCompression(this.cache, finalkey, result, 300);
         return result;
       }
