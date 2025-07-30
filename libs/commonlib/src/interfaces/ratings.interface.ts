@@ -18,21 +18,17 @@ export interface ICreateRating {
   anonymous?: boolean;
 }
 
-interface locationFilter {
-  city?: string;
-  state?: string;
-  country?: string;
-}
-
 export interface IGlobalRatingStats {
   // interval: 'day' | 'week' | 'month' | 'year';
-  interval: string;
+  interval?: string;
   cursor?: string;
   limit?: number;
-  locationFilter?: locationFilter;
   keyword?: string;
   from?: string;
   to?: string;
+  city?: string;
+  state?: string;
+  country?: string;
 }
 
 export interface IRatingStats {

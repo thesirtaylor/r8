@@ -15,3 +15,9 @@ export class SearchRateEntityDto {
   @IsEnum(EntityType)
   type?: EntityType;
 }
+
+export class SearchEngineSearchRateEntityDto {
+  @ApiProperty({ description: 'Search query' })
+  @IsString()
+  q: string;
+}
