@@ -19,12 +19,12 @@ message RateEntitySearchResult {
   string id = 1;
   string name = 2;
   string type = 3;
-  string street = 4;
-  string city = 5;
-  string state = 6;
-  string country = 7;
-  string googlePlaceId = 8;
+  optional string street = 4;
+  optional string city = 5;
+  optional string state = 6;
+  optional string country = 7;
+  optional string googlePlaceId = 8;
   map<string, string> socials = 9;
-  double latitude = 10;
-  double longitude = 11;
+  optional double latitude = 10;
+  optional double longitude = 11;
 }

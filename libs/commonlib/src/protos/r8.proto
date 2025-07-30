@@ -39,15 +39,15 @@ message GetRatingStatResponse {
 }
 
 message GlobalStatsQueryRequest {
-  string interval = 1; // 'day' | 'week' | 'month' | 'year'
-  string from = 2;
-  string to = 3;
-  string cursor = 4;
-  int32 limit = 5;
-  string city = 6;
-  string state = 7;
-  string country = 8;
-  string keyword = 9;
+  optional string interval = 1; // 'day' | 'week' | 'month' | 'year'
+  optional string from = 2;
+  optional string to = 3;
+  optional string cursor = 4;
+  optional int32 limit = 5;
+  optional string city = 6;
+  optional string state = 7;
+  optional string country = 8;
+  optional string keyword = 9;
 }
 
 message GlobalRatingStat {

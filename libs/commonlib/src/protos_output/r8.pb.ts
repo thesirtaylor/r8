@@ -42,15 +42,15 @@ export interface GetRatingStatResponse_ScoreCountsEntry {
 
 export interface GlobalStatsQueryRequest {
   /** 'day' | 'week' | 'month' | 'year' */
-  interval: string;
-  from: string;
-  to: string;
-  cursor: string;
-  limit: number;
-  city: string;
-  state: string;
-  country: string;
-  keyword: string;
+  interval?: string | undefined;
+  from?: string | undefined;
+  to?: string | undefined;
+  cursor?: string | undefined;
+  limit?: number | undefined;
+  city?: string | undefined;
+  state?: string | undefined;
+  country?: string | undefined;
+  keyword?: string | undefined;
 }
 
 export interface GlobalRatingStat {

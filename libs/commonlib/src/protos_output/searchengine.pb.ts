@@ -23,14 +23,14 @@ export interface RateEntitySearchResult {
   id: string;
   name: string;
   type: string;
-  street: string;
-  city: string;
-  state: string;
-  country: string;
-  googlePlaceId: string;
+  street?: string | undefined;
+  city?: string | undefined;
+  state?: string | undefined;
+  country?: string | undefined;
+  googlePlaceId?: string | undefined;
   socials: { [key: string]: string };
-  latitude: number;
-  longitude: number;
+  latitude?: number | undefined;
+  longitude?: number | undefined;
 }
 
 export interface RateEntitySearchResult_SocialsEntry {
