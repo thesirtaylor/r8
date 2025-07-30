@@ -16,7 +16,7 @@ export class GlobalRatingStatDto {
   entityId: string;
 
   @ApiProperty({ example: '4' })
-  total_ratings: string;
+  totalRatings: string;
 
   @ApiProperty({ example: '2025-06-24T12:00:05.516Z' })
   minCreatedAt: string;
@@ -25,7 +25,7 @@ export class GlobalRatingStatDto {
   maxCreatedAt: string;
 
   @ApiProperty({ example: '2.00' })
-  normalized_mean_score: string;
+  normalizedMeanScore: string;
 
   @ApiProperty({
     example: { '2': 4, '3': 1 },
@@ -33,7 +33,7 @@ export class GlobalRatingStatDto {
     type: 'object',
     additionalProperties: { type: 'number' },
   })
-  score_counts: Record<string, number>;
+  scoreCounts: Record<string, number>;
 
   @ApiProperty({ type: EntityDto })
   entity: EntityDto;

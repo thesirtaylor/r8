@@ -8,10 +8,10 @@ import {
   Request,
 } from '@nestjs/common';
 import {
+  AppLoggerService,
   CreateEntityRatingDto,
   CreateRateEntityDto,
   // FindEntitysRatingsWithCursorQuery,
-  GetRatingStatDto,
   GlobalStatsQueryDto,
   // RateEntity,
   SearchRateEntityDto,
@@ -39,6 +39,8 @@ import {
   CreateEntityRatingRequest,
   CreateRateEntityRequest,
   FindRatingsQuery,
+  GetRatingStatRequest,
+  GlobalStatsQueryRequest,
   SearchRateEntityRequest,
 } from '@app/commonlib/protos_output/r8.pb';
 import { validateOrReject } from 'class-validator';
@@ -47,7 +49,10 @@ import { plainToInstance } from 'class-transformer';
 @ApiTags('rate-entities')
 @Controller('rate-entities')
 export class R8Controller {
-  constructor(private readonly r8Service: R8Service) {}
+  constructor(
+    private readonly r8Service: R8Service,
+    private readonly logger: AppLoggerService,
+  ) {}
 
   @Get('entities')
   @ApiOperation({
@@ -121,7 +126,7 @@ export class R8Controller {
       entity: payload.entityId,
       ...payload,
     };
-    // this.logger.log({ data });
+    this.logger.log({ data });
     const dataDto = plainToInstance(CreateEntityRatingDto, data);
     await validateOrReject(dataDto);
     return await this.r8Service.createEntityRating(data);
@@ -134,12 +139,14 @@ export class R8Controller {
     description: 'OK',
     type: GlobalRatingStatsResponseDto,
   })
-  async getGlobalStats(@Query() query: GlobalStatsQueryDto) {
+  @ApiQuery({ type: GlobalStatsQueryDto })
+  async getGlobalStats(@Query() query: GlobalStatsQueryRequest) {
+    this.logger.log({ query });
     const { interval, from, to, cursor, limit, city, state, country, keyword } =
       query;
     const cursor_ = cursor ? cursor : undefined;
 
-    return this.r8Service.getGlobalRatingStats({
+    return await this.r8Service.getGlobalRatingStats({
       interval,
       from,
       to,
@@ -156,9 +163,15 @@ export class R8Controller {
   @ApiOperation({
     summary: 'Return Minimal Statistics for a Particular Entity',
   })
-  async getRatingState(@Query() query: GetRatingStatDto) {
+  @ApiResponse({
+    status: 200,
+    description: 'OK',
+    // type: GlobalRatingStatsResponseDto,
+  })
+  // @ApiQuery({ type: GlobalStatsQueryDto })
+  async getRatingState(@Query() query: GetRatingStatRequest) {
     const { id } = query;
-    return this.r8Service.getRatingStat({ id });
+    return await this.r8Service.getRatingStat({ id });
   }
 
   @Get('user')
