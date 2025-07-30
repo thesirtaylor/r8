@@ -27,7 +27,7 @@ export class SearchengineController {
   @GrpcMethod(SEARCH_ENGINE_SERVICE_NAME, 'search')
   async Search(payload: SearchRequest) {
     const { q } = payload;
-    return this.searchengineService.search(q);
+    return this.searchengineService.search({ q });
   }
 
   @EventPattern('rate-entity-created')

@@ -4,6 +4,7 @@ import {
   setCompression,
   getCompression,
 } from '@app/commonlib';
+import { SearchRequest } from '@app/commonlib/protos_output/searchengine.pb';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 
@@ -114,14 +115,15 @@ export class SearchengineService implements OnModuleDestroy, OnModuleInit {
     }
   }
 
-  async search(q: string): Promise<any[]> {
-    if (!q) return [];
+  async search(data: SearchRequest) {
+    const { q } = data;
+    if (!q) return { data: [] };
 
     const key = `autosuggest:${q}`;
-    const hit = (await getCompression(this.cache, key)) as any[];
+    const hit = await getCompression(this.cache, key);
 
     if (hit) {
-      return hit;
+      return { data: hit };
     }
 
     const resp = await this.es.search({
@@ -146,6 +148,6 @@ export class SearchengineService implements OnModuleDestroy, OnModuleInit {
 
     const results = resp.hits.hits.map((h) => h._source);
     await setCompression(this.cache, key, results, 300);
-    return results;
+    return { data: results };
   }
 }
