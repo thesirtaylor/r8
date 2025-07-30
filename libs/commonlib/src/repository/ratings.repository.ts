@@ -62,7 +62,14 @@ export class RatingRepository extends BaseRepository<Rating> {
   }
 
   async getGlobalRatingStats(payload: IGlobalRatingStats) {
-    const { interval: rawInterval, cursor, locationFilter, keyword } = payload;
+    const {
+      interval: rawInterval,
+      cursor,
+      city,
+      state,
+      country,
+      keyword,
+    } = payload;
     let { from, to } = payload;
     const limit = payload.limit ?? 10;
 
@@ -148,19 +155,19 @@ export class RatingRepository extends BaseRepository<Rating> {
       params.push(to);
     }
 
-    if (locationFilter?.city) {
+    if (city) {
       whereConditions.push(`e."city" ILIKE $${params.length + 1}`);
-      params.push(`%${locationFilter.city}%`);
+      params.push(`%${city}%`);
     }
 
-    if (locationFilter?.state) {
+    if (state) {
       whereConditions.push(`e."state" ILIKE $${params.length + 1}`);
-      params.push(`%${locationFilter.state}%`);
+      params.push(`%${state}%`);
     }
 
-    if (locationFilter?.country) {
+    if (country) {
       whereConditions.push(`e."country" ILIKE $${params.length + 1}`);
-      params.push(`%${locationFilter.country}%`);
+      params.push(`%${country}%`);
     }
 
     if (keyword) {
@@ -233,19 +240,23 @@ export class RatingRepository extends BaseRepository<Rating> {
     const result = await this.query(sql, params);
 
     const hasNextPage = result.length > limit;
-    const data = hasNextPage ? result.slice(0, limit) : result;
+    const rows = hasNextPage ? result.slice(0, limit) : result;
+    const data = rows.map((r) => ({
+      interval: r.interval.toISOString(),
+      entityId: r.entityId,
+      totalRatings: r.total_ratings,
+      minCreatedAt: r.minCreatedAt.toISOString(),
+      maxCreatedAt: r.maxCreatedAt.toISOString(),
+      normalizedMeanScore: r.normalized_mean_score,
+      scoreCounts: r.score_counts,
+      entity: r.entity,
+    }));
 
-    let nextCursor = null;
+    let nextCursor = undefined;
     if (hasNextPage) {
-      const last = data[data.length - 1];
-      nextCursor = { cursor: last.interval };
+      nextCursor = { cursor: data[data.length - 1].interval };
     }
-
-    return {
-      data,
-      nextCursor,
-      hasNextPage,
-    };
+    return { data, nextCursor, hasNextPage };
   }
 
   async getEntityRatingStat(entityId: string) {
@@ -273,6 +284,12 @@ export class RatingRepository extends BaseRepository<Rating> {
     FROM score_counts;
     `;
     const result = await this.query(query, [entityId]);
-    return result[0];
+    const resp = result[0];
+
+    return {
+      totalRatings: resp.total_ratings,
+      normalizedMeanScore: resp.normalized_mean_score,
+      scoreCounts: resp.score_counts,
+    };
   }
 }
