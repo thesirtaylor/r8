@@ -13,7 +13,6 @@ export function protoPath(relativePath: string) {
     'protos',
     relativePath,
   );
-  console.log({ devPath });
 
   const buildPath = join(
     __dirname,
@@ -24,7 +23,6 @@ export function protoPath(relativePath: string) {
     'protos',
     relativePath,
   );
-  console.log({ buildPath });
 
   return existsSync(devPath) ? buildPath : devPath;
 }
