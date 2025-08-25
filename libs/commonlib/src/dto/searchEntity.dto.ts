@@ -2,7 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { EntityType } from '../entity';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 
-export class SearchRateEntityDto {
+export class SearchTheEntityDto {
   @ApiProperty({ description: 'Search query' })
   @IsString()
   q: string;
@@ -16,7 +16,7 @@ export class SearchRateEntityDto {
   type?: EntityType;
 }
 
-export class SearchEngineSearchRateEntityDto {
+export class SearchEngineSearchTheEntityDto {
   @ApiProperty({ description: 'Search query' })
   @IsString()
   q: string;

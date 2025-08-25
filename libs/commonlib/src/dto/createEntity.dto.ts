@@ -91,7 +91,7 @@ export class SocialLinksDto {
   discord?: string;
 }
 
-export class CreateRateEntityDto {
+export class CreateTheEntityDto {
   @ApiProperty({ enum: EntityType }) @IsEnum(EntityType) type: EntityType;
   @IsOptional() @IsString() name: string;
   @ApiPropertyOptional() @IsOptional() @IsString() street?: string;

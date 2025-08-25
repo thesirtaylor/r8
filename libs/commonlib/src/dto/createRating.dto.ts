@@ -10,7 +10,7 @@ import {
   Min,
 } from 'class-validator';
 
-export class CreateEntityRatingDto {
+export class CreateRatingDto {
   @ApiProperty() @IsUUID() entityId: string;
   @ApiProperty() @IsInt() @Min(1) @Max(5) score: number;
   @ApiPropertyOptional() @IsOptional() @IsString() comment?: string;
