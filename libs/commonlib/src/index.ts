@@ -20,5 +20,5 @@ export * from './health';
  *      calculate entity rate score & group score by rate
  * 4. write get rating logic (with cache policy)<with cache>✅
  * 5. write public data correctness logic (with cache policy)
- * 6. separate user in r8 into an independent auth service
+ * 6. separate user in r8 into an independent auth service✅
  */
