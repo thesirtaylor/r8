@@ -3,7 +3,7 @@ import { SearchengineService } from './searchengine.service';
 import {
   Outbox,
   OutboxRepository,
-  RateEntity,
+  TheEntity,
   RedisService,
 } from '@app/commonlib';
 import { EventPattern, GrpcMethod, Payload } from '@nestjs/microservices';
@@ -32,15 +32,15 @@ export class SearchengineController {
 
   @EventPattern('rate-entity-created')
   async indexEntity(
-    @Payload() entities: Array<RateEntity & { eventId: string }>,
+    @Payload() entities: Array<TheEntity & { eventId: string }>,
   ) {
     for (const entity of entities) {
-      const key = `indexed:rate-entity:${entity.eventId}`;
+      const key = `indexed:rate-entity:${entity.id}`;
       const wasSet = await this.cache.setOnce(key, '1', 600);
 
       if (!wasSet) {
         //prevents unnecessary immediate multiple elastic indexing attempts
-        this.logger.log(`Duplicate rate-entity ${entity.eventId}, skipping.`);
+        this.logger.log(`Duplicate rate-entity ${entity.id}, skipping.`);
         continue;
       }
 
@@ -60,10 +60,10 @@ export class SearchengineController {
       .execute();
   }
 
-  private async indexOne(entity: RateEntity & { eventId: string }) {
+  private async indexOne(entity: TheEntity & { eventId: string }) {
     try {
       const doc = {
-        id: entity.eventId,
+        id: entity.id,
         type: entity.type,
         name: entity.name,
         street: entity.street,
@@ -78,7 +78,7 @@ export class SearchengineController {
       };
       return await this.esService.index({
         index: this.INDEX,
-        id: entity.eventId,
+        id: entity.id,
         document: doc,
       });
     } catch (error) {
@@ -115,4 +115,6 @@ export class SearchengineController {
   //     await this.esService.bulk({ refresh: true, body });
   //   }
   // }
+
+  //do rate-entity-updated after uploading media successfully
 }

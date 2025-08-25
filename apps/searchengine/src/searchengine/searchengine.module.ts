@@ -3,12 +3,10 @@ import { SearchengineController } from './searchengine.controller';
 import { SearchengineService } from './searchengine.service';
 import { ElasticsearchModule } from '@nestjs/elasticsearch';
 import {
-  // AppLoggerService,
   Outbox,
   OutboxRepository,
-  RateEntity,
+  TheEntity,
   RedisModule,
-  // RedisService,
 } from '@app/commonlib';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -20,18 +18,13 @@ if (!nodeUrl) {
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([RateEntity, Outbox]),
+    TypeOrmModule.forFeature([TheEntity, Outbox]),
     ElasticsearchModule.register({
       node: nodeUrl,
     }),
     RedisModule,
   ],
   controllers: [SearchengineController],
-  providers: [
-    SearchengineService,
-    // RedisService,
-    // AppLoggerService,
-    OutboxRepository,
-  ],
+  providers: [SearchengineService, OutboxRepository],
 })
 export class SearchengineModule {}
