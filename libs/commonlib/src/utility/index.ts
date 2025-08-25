@@ -1,1 +1,1 @@
-export * from './cache-compression.utility';
+export * from './cache_compression.utility';
