@@ -2,6 +2,7 @@ import { IsEnum } from 'class-validator';
 import { Column, Entity, Index, OneToMany } from 'typeorm';
 import { Rating } from './rating.entity';
 import { BaseEntity } from './base_entity.entity';
+import { Media } from './media.entity';
 
 export enum EntityType {
   PRODUCT = 'product',
@@ -15,7 +16,7 @@ export enum EntityType {
 @Entity({ name: 'entities' })
 @Index('IDX_ENTITIES_TYPE', ['type'])
 @Index('IDX_ENTITIES_NAME', ['name'])
-export class RateEntity extends BaseEntity {
+export class TheEntity extends BaseEntity {
   @IsEnum(EntityType)
   @Column({ type: 'enum', enum: EntityType })
   type: EntityType;
@@ -49,4 +50,7 @@ export class RateEntity extends BaseEntity {
 
   @OneToMany(() => Rating, (rating) => rating.entity)
   ratings: Rating[];
+
+  @OneToMany(() => Media, (media) => media.entity)
+  media: Media[];
 }

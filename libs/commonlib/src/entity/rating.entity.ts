@@ -1,5 +1,5 @@
 import { Column, Entity, Index, ManyToOne } from 'typeorm';
-import { RateEntity } from './rate_entity.entity';
+import { TheEntity } from './the_entity.entity';
 import { User } from './user.entity';
 import { BaseEntity } from './base_entity.entity';
 
@@ -7,10 +7,10 @@ import { BaseEntity } from './base_entity.entity';
 @Index('IDX_RATING_ENTITY', ['entity'])
 @Index('IDX_RATINGS_ENTITY_DATE', ['entity', 'createdAt'])
 export class Rating extends BaseEntity {
-  @ManyToOne(() => RateEntity, (entity) => entity.ratings, {
+  @ManyToOne(() => TheEntity, (entity) => entity.ratings, {
     onDelete: 'CASCADE',
   })
-  entity: RateEntity;
+  entity: TheEntity;
 
   @ManyToOne(() => User, (user) => user.ratings, { onDelete: 'CASCADE' })
   user: User;
