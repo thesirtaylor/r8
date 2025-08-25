@@ -5,7 +5,6 @@ import {
   LoggingInterceptor,
   protoPath,
 } from '@app/commonlib';
-// import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { protobufPackage } from '@app/commonlib/protos_output/searchengine.pb';
 import { protobufPackage as HealthProtoBuf } from '@app/commonlib/protos_output/health.pb';
@@ -33,16 +32,6 @@ async function bootstrap() {
   const logger = app.get(AppLoggerService);
   app.useGlobalInterceptors(new LoggingInterceptor(logger));
 
-  // app.useGlobalPipes(
-  //   new ValidationPipe({
-  //     whitelist: true,
-  //     forbidNonWhitelisted: false,
-  //     transform: true,
-  //     transformOptions: {
-  //       enableImplicitConversion: true,
-  //     },
-  //   }),
-  // );
   await app.startAllMicroservices();
 }
 bootstrap();
