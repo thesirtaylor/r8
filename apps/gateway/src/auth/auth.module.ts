@@ -1,32 +1,32 @@
 import { Module } from '@nestjs/common';
-import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
-import { JwtModule } from '@nestjs/jwt';
 import { GoogleStrategy } from './strategies/google.strategy';
-import { JWTService } from './jwt.service';
-import { Auth, User, AuthRepository, UserRepository } from '@app/commonlib';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtAuthGuard } from './guards/jwt.oauth-guard';
 import { JWTStrategy } from './strategies/jwt.strategy';
+import { AuthService } from './auth.service';
+import { ClientsModule, Transport } from '@nestjs/microservices';
+import {
+  AUTH_PACKAGE_NAME,
+  AUTH_SERVICE_NAME,
+} from '@app/commonlib/protos_output/auth.pb';
+import { protoPath } from '@app/commonlib';
 
 @Module({
-  controllers: [AuthController],
-  providers: [
-    AuthService,
-    GoogleStrategy,
-    JWTService,
-    UserRepository,
-    AuthRepository,
-    JwtAuthGuard,
-    JWTStrategy,
-  ],
   imports: [
-    TypeOrmModule.forFeature([Auth, User]),
-    JwtModule.register({
-      secret: process.env.JWT_SECRET,
-      signOptions: { expiresIn: '4h' },
-    }),
+    ClientsModule.register([
+      {
+        name: AUTH_SERVICE_NAME,
+        transport: Transport.GRPC,
+        options: {
+          url: process.env.AUTH_GRPC,
+          package: AUTH_PACKAGE_NAME,
+          protoPath: protoPath('auth.proto'),
+        },
+      },
+    ]),
   ],
+  controllers: [AuthController],
+  providers: [AuthService, GoogleStrategy, JwtAuthGuard, JWTStrategy],
   exports: [JwtAuthGuard, AuthService],
 })
 export class AuthModule {}

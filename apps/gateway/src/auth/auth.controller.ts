@@ -1,10 +1,17 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-import { Controller, Get, Req, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Req,
+  UseGuards,
+  Request,
+  Query,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AppLoggerService } from '@app/commonlib';
 import { GoogleOauthGuard } from './guards/google.oauth-guard';
 import { ApiExcludeEndpoint, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { OAuthCallbackResponseDto } from '../openAPI';
+import { OAuthCallbackResponseDto, UserResponseDto } from '../openAPI';
 
 @Controller('auth')
 export class AuthController {
@@ -44,6 +51,23 @@ export class AuthController {
       return this.authService.google(user);
     } catch (error) {
       this.logger.error(error);
+    }
+  }
+
+  @Get('user')
+  // @ApiSecurity('access-token')
+  @ApiOperation({ summary: 'Fetch User by id' })
+  @ApiResponse({
+    status: 200,
+    description: 'OK',
+    type: UserResponseDto,
+  })
+  @ApiResponse({ status: 400, description: 'Bad Request' })
+  async GetUser(@Query('id') id: string) {
+    try {
+      return this.authService.getUser({ id });
+    } catch (error) {
+      this.logger.log({ error });
     }
   }
 }

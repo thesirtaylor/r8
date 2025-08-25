@@ -24,7 +24,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') implements CanActivate {
     }
 
     const token: string = authorization;
-    const response = await this.service.verifyToken(token);
+    const response = await this.service.verifyToken({ token });
     console.log({ response });
 
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
