@@ -3,7 +3,7 @@ import { RatingsService } from './ratings.service';
 import { AppLoggerService } from '@app/commonlib';
 import { GrpcMethod } from '@nestjs/microservices';
 import {
-  CreateEntityRatingRequest,
+  CreateRatingRequest,
   FindRatingsQuery,
   GetRatingStatRequest,
   GetRatingStatResponse,
@@ -29,9 +29,9 @@ export class RatingsController {
     return await this.ratingsService.GetRatingsOfEntity(payload);
   }
 
-  @GrpcMethod(R8_SERVICE_NAME, 'createEntityRating')
-  async createEntityRating(
-    payload: CreateEntityRatingRequest,
+  @GrpcMethod(R8_SERVICE_NAME, 'createRating')
+  async createRating(
+    payload: CreateRatingRequest,
   ): Promise<RatingDetailResponse | Observable<RatingDetailResponse>> {
     return await this.ratingsService.RateEntity(payload);
   }

@@ -1,7 +1,6 @@
 import {
   AppLoggerService,
   RatingRepository,
-  IFindEntitysRatingsWithCursor,
   RedisService,
   getCompression,
   setCompression,
@@ -11,6 +10,7 @@ import {
   IRatingStats,
 } from '@app/commonlib';
 import {
+  FindRatingsQuery,
   GetRatingStatResponse,
   GlobalRatingStatsResponse,
   PaginatedRatingsResponse,
@@ -29,15 +29,15 @@ export class RatingsService {
     this.logger.setContext(RatingsService.name);
   }
 
-  async GetRatingsOfEntity(payload: IFindEntitysRatingsWithCursor) {
-    const { entityId, cursor_id } = payload;
+  async GetRatingsOfEntity(payload: FindRatingsQuery) {
+    const { entityId, cursorId } = payload;
     payload.limit = payload.limit ?? 20;
 
     const cacheKeyParts = [
       'entity_rating',
       entityId,
       `limit:${payload.limit}`,
-      cursor_id ?? 'none',
+      cursorId ?? 'none',
     ];
 
     const cacheKey = cacheKeyParts.join('|');
