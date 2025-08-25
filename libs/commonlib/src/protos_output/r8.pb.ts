@@ -84,7 +84,7 @@ export interface GlobalRatingStatsResponse {
   hasNextPage: boolean;
 }
 
-export interface CreateEntityRatingRequest {
+export interface CreateRatingRequest {
   entityId: string;
   userId: string;
   score: number;
@@ -132,7 +132,7 @@ export interface SocialLinks {
   discord?: string | undefined;
 }
 
-export interface CreateRateEntityRequest {
+export interface CreateTheEntityRequest {
   type: string;
   name: string;
   street?: string | undefined;
@@ -143,7 +143,7 @@ export interface CreateRateEntityRequest {
   socials?: SocialLinks | undefined;
 }
 
-export interface RateEntityResponse {
+export interface TheEntityResponse {
   id: string;
   type: string;
   name?: string | undefined;
@@ -183,12 +183,12 @@ export interface PaginatedRatingsResponse {
   hasNextPage: boolean;
 }
 
-export interface SearchRateEntityRequest {
+export interface SearchTheEntityRequest {
   q: string;
   type?: string | undefined;
 }
 
-export interface RateEntity {
+export interface TheEntity {
   id: string;
   type: string;
   name?: string | undefined;
@@ -204,20 +204,20 @@ export interface RateEntity {
   updatedAt?: string | undefined;
 }
 
-export interface RateEntityListResponse {
-  data: RateEntity[];
+export interface TheEntityListResponse {
+  data: TheEntity[];
 }
 
 export const R8_PACKAGE_NAME = "r8";
 
 export interface R8ServiceClient {
-  createRateEntity(request: CreateRateEntityRequest): Observable<RateEntityResponse>;
+  createTheEntity(request: CreateTheEntityRequest): Observable<TheEntityResponse>;
 
   findRatingsForEntity(request: FindRatingsQuery): Observable<PaginatedRatingsResponse>;
 
-  searchRateEntities(request: SearchRateEntityRequest): Observable<RateEntityListResponse>;
+  searchTheEntities(request: SearchTheEntityRequest): Observable<TheEntityListResponse>;
 
-  createEntityRating(request: CreateEntityRatingRequest): Observable<RatingDetailResponse>;
+  createRating(request: CreateRatingRequest): Observable<RatingDetailResponse>;
 
   getGlobalRatingStats(request: GlobalStatsQueryRequest): Observable<GlobalRatingStatsResponse>;
 
@@ -227,20 +227,20 @@ export interface R8ServiceClient {
 }
 
 export interface R8ServiceController {
-  createRateEntity(
-    request: CreateRateEntityRequest,
-  ): Promise<RateEntityResponse> | Observable<RateEntityResponse> | RateEntityResponse;
+  createTheEntity(
+    request: CreateTheEntityRequest,
+  ): Promise<TheEntityResponse> | Observable<TheEntityResponse> | TheEntityResponse;
 
   findRatingsForEntity(
     request: FindRatingsQuery,
   ): Promise<PaginatedRatingsResponse> | Observable<PaginatedRatingsResponse> | PaginatedRatingsResponse;
 
-  searchRateEntities(
-    request: SearchRateEntityRequest,
-  ): Promise<RateEntityListResponse> | Observable<RateEntityListResponse> | RateEntityListResponse;
+  searchTheEntities(
+    request: SearchTheEntityRequest,
+  ): Promise<TheEntityListResponse> | Observable<TheEntityListResponse> | TheEntityListResponse;
 
-  createEntityRating(
-    request: CreateEntityRatingRequest,
+  createRating(
+    request: CreateRatingRequest,
   ): Promise<RatingDetailResponse> | Observable<RatingDetailResponse> | RatingDetailResponse;
 
   getGlobalRatingStats(
@@ -257,10 +257,10 @@ export interface R8ServiceController {
 export function R8ServiceControllerMethods() {
   return function (constructor: Function) {
     const grpcMethods: string[] = [
-      "createRateEntity",
+      "createTheEntity",
       "findRatingsForEntity",
-      "searchRateEntities",
-      "createEntityRating",
+      "searchTheEntities",
+      "createRating",
       "getGlobalRatingStats",
       "getRatingStat",
       "getUser",
