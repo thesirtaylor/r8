@@ -5,11 +5,14 @@ import {
 } from '@nestjs/common';
 import { BaseRepository } from './base.repository';
 import { DataSource } from 'typeorm';
-import {
-  IFindEntitysRatingsWithCursor,
-  IGlobalRatingStats,
-} from '../interfaces';
+import {} from // IFindEntitysRatingsWithCursor,
+// IGlobalRatingStats,
+'../interfaces';
 import { Rating } from '../entity';
+import {
+  FindRatingsQuery,
+  GlobalStatsQueryRequest,
+} from '../protos_output/r8.pb';
 
 @Injectable()
 export class RatingRepository extends BaseRepository<Rating> {
@@ -17,13 +20,14 @@ export class RatingRepository extends BaseRepository<Rating> {
     super(Rating, dataSource);
   }
 
-  async findRatingsOfEntityWithCursor(payload: IFindEntitysRatingsWithCursor) {
-    const { entityId, limit, cursor_id } = payload;
+  async findRatingsOfEntityWithCursor(payload: FindRatingsQuery) {
+    const { entityId, limit, cursorId } = payload;
     const query = this.createQueryBuilder('r')
-      .innerJoin('r.user', 'u')
+      .leftJoin('r.user', 'u')
+      .where('r.entityId = :entityId', { entityId })
       .select([
         'r.id AS id',
-        'r.score AS score ',
+        'r.score AS score',
         'r.comment AS comment',
         'r.tags AS tags',
         'r.anonymous AS anonymous',
@@ -32,36 +36,29 @@ export class RatingRepository extends BaseRepository<Rating> {
         `CASE WHEN r.anonymous THEN 'Anonymous' ELSE u.email END AS email`,
         `CASE WHEN r.anonymous THEN '' ELSE u.avatar END AS avatar`,
       ])
-      .where('r.entity.id = :entityId', { entityId })
       .orderBy('r.id', 'DESC')
       .limit(limit + 1);
-
-    if (cursor_id) {
+    if (cursorId) {
       query.andWhere('(r.id <= :id)', {
-        id: cursor_id,
+        id: cursorId,
       });
     }
     const results = await query.getRawMany();
+    console.log('[SQL]', query.getSql(), query.getParameters());
 
     const hasNextPage = results.length > limit;
-    const data = results.slice(0, limit) ?? [];
+    const data = results.slice(0, limit);
 
-    let nextCursor = null;
-    if (hasNextPage) {
-      const next = results[limit];
-      nextCursor = {
-        id: next.id,
-      };
-    }
+    const nextCursorId = hasNextPage ? results[limit].id : null;
 
     return {
       data,
-      nextCursor: nextCursor.id,
+      nextCursor: nextCursorId,
       hasNextPage,
     };
   }
 
-  async getGlobalRatingStats(payload: IGlobalRatingStats) {
+  async getGlobalRatingStats(payload: GlobalStatsQueryRequest) {
     const {
       interval: rawInterval,
       cursor,
