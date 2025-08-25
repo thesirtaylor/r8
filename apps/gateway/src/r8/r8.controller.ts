@@ -9,12 +9,12 @@ import {
 } from '@nestjs/common';
 import {
   AppLoggerService,
-  CreateEntityRatingDto,
-  CreateRateEntityDto,
+  CreateRatingDto,
+  CreateTheEntityDto,
   // FindEntitysRatingsWithCursorQuery,
   GlobalStatsQueryDto,
   // RateEntity,
-  SearchRateEntityDto,
+  SearchTheEntityDto,
 } from '@app/commonlib';
 import {
   ApiBody,
@@ -30,18 +30,17 @@ import {
   PaginatedRatingsResponseDto,
   RateEntityResponseDto,
   RatingDetailResponseDto,
-  UserResponseDto,
 } from '../openAPI';
 import { JwtAuthGuard } from '../auth/guards/jwt.oauth-guard';
 import { RateEntityListResponseDto } from '../openAPI/regularSearch.dto';
 import { R8Service } from './r8.service';
 import {
-  CreateEntityRatingRequest,
-  CreateRateEntityRequest,
+  CreateRatingRequest,
+  CreateTheEntityRequest,
   FindRatingsQuery,
   GetRatingStatRequest,
   GlobalStatsQueryRequest,
-  SearchRateEntityRequest,
+  SearchTheEntityRequest,
 } from '@app/commonlib/protos_output/r8.pb';
 import { validateOrReject } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
@@ -66,11 +65,11 @@ export class R8Controller {
   })
   @ApiQuery({
     description: 'Search entity by type & name',
-    type: SearchRateEntityDto,
+    type: SearchTheEntityDto,
   })
   @ApiResponse({ status: 400, description: 'Bad Request' })
-  async search(@Query() dto: SearchRateEntityRequest) {
-    return await this.r8Service.searchRateEntities(dto);
+  async search(@Query() dto: SearchTheEntityRequest) {
+    return await this.r8Service.searchTheEntities(dto);
   }
 
   @Post('entities')
@@ -85,12 +84,12 @@ export class R8Controller {
   @ApiResponse({ status: 400, description: 'Bad Request' })
   @ApiBody({
     description: 'Create new rateable entity',
-    type: CreateRateEntityDto,
+    type: CreateTheEntityDto,
   })
-  async CreateEntity(@Body() payload: CreateRateEntityRequest) {
-    const dto = plainToInstance(CreateRateEntityDto, payload);
+  async CreateEntity(@Body() payload: CreateTheEntityRequest) {
+    const dto = plainToInstance(CreateTheEntityDto, payload);
     await validateOrReject(dto);
-    return await this.r8Service.createRateEntity(payload);
+    return await this.r8Service.createTheEntity(payload);
   }
 
   @Get('/rates')
@@ -103,7 +102,13 @@ export class R8Controller {
     type: PaginatedRatingsResponseDto,
   })
   async getEntityRating(@Query() query: FindRatingsQuery) {
-    return await this.r8Service.findRatingsForEntity(query);
+    const { entityId, limit, cursorId } = query;
+    this.logger.debug({ q: query });
+    return await this.r8Service.findRatingsForEntity({
+      entityId,
+      limit,
+      cursorId,
+    });
   }
 
   @Post('/rates')
@@ -115,10 +120,7 @@ export class R8Controller {
     description: 'OK',
     type: RatingDetailResponseDto,
   })
-  async rateEntity(
-    @Request() req: any,
-    @Body() payload: CreateEntityRatingRequest,
-  ) {
+  async rateEntity(@Request() req: any, @Body() payload: CreateRatingRequest) {
     const { user } = req;
 
     const data = {
@@ -127,9 +129,9 @@ export class R8Controller {
       ...payload,
     };
     this.logger.log({ data });
-    const dataDto = plainToInstance(CreateEntityRatingDto, data);
+    const dataDto = plainToInstance(CreateRatingDto, data);
     await validateOrReject(dataDto);
-    return await this.r8Service.createEntityRating(data);
+    return await this.r8Service.createRating(data);
   }
 
   @Get('/global-stats')
@@ -172,18 +174,5 @@ export class R8Controller {
   async getRatingState(@Query() query: GetRatingStatRequest) {
     const { id } = query;
     return await this.r8Service.getRatingStat({ id });
-  }
-
-  @Get('user')
-  // @ApiSecurity('access-token')
-  @ApiOperation({ summary: 'Fetch User by id' })
-  @ApiResponse({
-    status: 200,
-    description: 'OK',
-    type: UserResponseDto,
-  })
-  @ApiResponse({ status: 400, description: 'Bad Request' })
-  async GetUser(@Query('id') id: string) {
-    return this.r8Service.getUser({ id });
   }
 }

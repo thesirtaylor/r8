@@ -1,14 +1,14 @@
 import { AppLoggerService } from '@app/commonlib';
 import {
-  CreateEntityRatingRequest,
-  CreateRateEntityRequest,
+  CreateRatingRequest,
+  CreateTheEntityRequest,
   FindRatingsQuery,
   GetRatingStatRequest,
   GetUserRequest,
   GlobalStatsQueryRequest,
   R8_SERVICE_NAME,
   R8ServiceClient,
-  SearchRateEntityRequest,
+  SearchTheEntityRequest,
 } from '@app/commonlib/protos_output/r8.pb';
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { ClientGrpc } from '@nestjs/microservices';
@@ -28,20 +28,20 @@ export class R8Service implements OnModuleInit {
     this.service = this.client.getService<R8ServiceClient>(R8_SERVICE_NAME);
   }
 
-  async createRateEntity(payload: CreateRateEntityRequest) {
-    return await firstValueFrom(this.service.createRateEntity(payload));
+  async createTheEntity(payload: CreateTheEntityRequest) {
+    return await firstValueFrom(this.service.createTheEntity(payload));
   }
 
-  async searchRateEntities(payload: SearchRateEntityRequest) {
-    return await firstValueFrom(this.service.searchRateEntities(payload));
+  async searchTheEntities(payload: SearchTheEntityRequest) {
+    return await firstValueFrom(this.service.searchTheEntities(payload));
   }
 
   async findRatingsForEntity(payload: FindRatingsQuery) {
     return await firstValueFrom(this.service.findRatingsForEntity(payload));
   }
 
-  async createEntityRating(payload: CreateEntityRatingRequest) {
-    return await firstValueFrom(this.service.createEntityRating(payload));
+  async createRating(payload: CreateRatingRequest) {
+    return await firstValueFrom(this.service.createRating(payload));
   }
 
   async getGlobalRatingStats(payload: GlobalStatsQueryRequest) {

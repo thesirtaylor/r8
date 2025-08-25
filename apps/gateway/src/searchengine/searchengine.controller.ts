@@ -1,6 +1,6 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { SearchengineService } from './searchengine.service';
-import { SearchEngineSearchRateEntityDto } from '@app/commonlib';
+import { SearchEngineSearchTheEntityDto } from '@app/commonlib';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { RateEntityListResponseDto } from '../openAPI/regularSearch.dto';
 
@@ -17,7 +17,7 @@ export class SearchengineController {
     description: 'Entity Found',
     type: RateEntityListResponseDto,
   })
-  async Search(@Query() dto: SearchEngineSearchRateEntityDto) {
+  async Search(@Query() dto: SearchEngineSearchTheEntityDto) {
     return this.searchengineService.search(dto);
   }
 }

@@ -1,16 +1,10 @@
 import { NestFactory } from '@nestjs/core';
 import { GatewayModule } from './gateway.module';
-import {
-  AppDataSource,
-  AppLoggerService,
-  LoggingInterceptor,
-} from '@app/commonlib';
+import { AppLoggerService, LoggingInterceptor } from '@app/commonlib';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
-  await AppDataSource.initialize();
-  await AppDataSource.runMigrations();
   const app = await NestFactory.create(GatewayModule);
   const logger = app.get(AppLoggerService);
 
