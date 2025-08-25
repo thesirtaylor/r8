@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package media;
+
+service MediaService {
+  rpc InitiateUpload (UploadMediaRequest) returns (UploadMediaResponse);
+  rpc FinaliseUpload (FinaliseUploadRequest) returns (FinaliseUploadResponse);
+}
+
+message UploadMediaItem {
+  string entityType = 1;
+  string mime = 2;
+  string size = 3;
+  optional string description = 4;
+}
+
+message UploadMediaRequest {
+  string entityId = 1;
+  repeated UploadMediaItem items = 2;
+}
+
+
+message UploadMediaResponse {
+  string batchId = 1; //doubles as idempotency key
+  string entityId = 2;
+}
+
+message FinaliseUploadRequest {
+  string batchId = 1;
+  string entityId = 2;
+}
+
+message FinaliseUploadResponse {
+  string batchId = 1;
+  string status = 2;
+  int32 readyCount = 3;
+}

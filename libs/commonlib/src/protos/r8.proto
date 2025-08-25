@@ -3,10 +3,10 @@ syntax = "proto3";
 package r8;
 
 service R8Service {
-  rpc CreateRateEntity (CreateRateEntityRequest) returns (RateEntityResponse);
+  rpc CreateTheEntity (CreateTheEntityRequest) returns (TheEntityResponse);
   rpc FindRatingsForEntity (FindRatingsQuery) returns (PaginatedRatingsResponse);
-  rpc SearchRateEntities (SearchRateEntityRequest) returns (RateEntityListResponse);
-  rpc CreateEntityRating (CreateEntityRatingRequest) returns (RatingDetailResponse);
+  rpc SearchTheEntities (SearchTheEntityRequest) returns (TheEntityListResponse);
+  rpc CreateRating (CreateRatingRequest) returns (RatingDetailResponse);
   rpc GetGlobalRatingStats (GlobalStatsQueryRequest) returns (GlobalRatingStatsResponse);
   rpc GetRatingStat(GetRatingStatRequest) returns (GetRatingStatResponse);
   rpc GetUser(GetUserRequest) returns (UserResponse);
@@ -76,7 +76,7 @@ message GlobalRatingStatsResponse {
   bool hasNextPage = 3;
 }
 
-message CreateEntityRatingRequest {
+message CreateRatingRequest {
   string entityId = 1;
   string userId = 2;
   int32 score = 3;
@@ -124,7 +124,7 @@ message SocialLinks {
   optional string discord = 16;
 }
 
-message CreateRateEntityRequest {
+message CreateTheEntityRequest {
   string type = 1;
   string name = 2;
   optional string street = 3;
@@ -135,7 +135,7 @@ message CreateRateEntityRequest {
   optional SocialLinks socials = 8;
 }
 
-message RateEntityResponse {
+message TheEntityResponse {
   string id = 1;
   string type = 2;
   optional string name = 3;
@@ -175,12 +175,12 @@ message PaginatedRatingsResponse {
   bool hasNextPage = 3;
 }
 
-message SearchRateEntityRequest {
+message SearchTheEntityRequest {
   string q = 1;
   optional string type = 2;
 }
 
-message RateEntity {
+message TheEntity {
   string id = 1;
   string type = 2;
   optional string name = 3;
@@ -196,6 +196,6 @@ message RateEntity {
   optional string updatedAt = 13;
 }
 
-message RateEntityListResponse {
-  repeated RateEntity data = 1;
+message TheEntityListResponse {
+  repeated TheEntity data = 1;
 }

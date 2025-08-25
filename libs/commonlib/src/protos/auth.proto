@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package auth;
+
+service AuthService {
+  rpc GetUser(GetUserRequest) returns (UserResponse);
+  rpc GoogleAuth(GoogleAuthRequest) returns (GoogleAuthResponse);
+  rpc Validation(ValidationRequest) returns (UserResponse);
+  rpc Verification(VerificationRequest) returns (UserResponse);
+}
+
+message GetUserRequest {
+  string id = 1;
+}
+message UserResponse {
+  string id = 1;
+  string createdAt = 2;
+  string updatedAt = 3;
+  optional string username = 4; // optional field
+  string name = 5;
+  string email = 6;
+  string avatar = 7;
+}
+
+message GoogleAuthRequest {
+    string email = 1;
+    string avatar = 2;
+    string provider = 3;
+    string name = 4; 
+}
+
+message GoogleAuthResponse {
+    string access_token = 1;
+    string refresh_token = 2;
+}
+
+message ValidationRequest {
+    string id = 1;
+}
+
+message VerificationRequest {
+    string token = 1;
+}
+
+ 
