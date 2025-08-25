@@ -8,24 +8,14 @@ import {
   RedisService,
   TheEntityRepository,
 } from '@app/commonlib';
-// import { ElasticsearchModule } from '@nestjs/elasticsearch';
 import { OutboxService } from './outbox/outbox.service';
 import { Outbox, OutboxRepository } from '@app/commonlib';
 import { BullModule } from '@nestjs/bull';
 import { OutboxProcessor } from './outbox/outbox.processor';
 
-// const nodeUrl = process.env.ELASTICSEARCH_NODE;
-
-// if (!nodeUrl) {
-//   throw new ConflictException('ELASTICSEARCH_NODE not set');
-// }
-
 @Module({
   imports: [
     TypeOrmModule.forFeature([TheEntity, Outbox]),
-    // ElasticsearchModule.register({
-    //   node: nodeUrl,
-    // }),
     RedisModule,
     BullModule.forRoot({
       redis: {

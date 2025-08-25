@@ -7,14 +7,7 @@ import {
   MessagingModule,
   RedisModule,
   dataSourceOptions,
-  // HealthModule,
 } from '@app/commonlib';
-
-// const nodeUrl = process.env.ELASTICSEARCH_NODE;
-
-// if (!nodeUrl) {
-//   throw new ConflictException('ELASTICSEARCH_NODE not set');
-// }
 
 @Module({
   imports: [
@@ -24,11 +17,6 @@ import {
     RatingsModule,
     RedisModule,
     MessagingModule,
-    // HealthModule.register({
-    //   elasticsearchConfig: {
-    //     node: process.env.ELASTICSEARCH_NODE,
-    //   },
-    // }),
   ],
   controllers: [],
   providers: [],
