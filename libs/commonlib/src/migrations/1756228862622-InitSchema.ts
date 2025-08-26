@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class InitSchema1756072224635 implements MigrationInterface {
-    name = 'InitSchema1756072224635'
+export class InitSchema1756228862622 implements MigrationInterface {
+    name = 'InitSchema1756228862622'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`CREATE TABLE "auth" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "access_token" text NOT NULL, "refresh_token" text NOT NULL, "userId" uuid, CONSTRAINT "PK_7e416cf6172bc5aec04244f6459" PRIMARY KEY ("id"))`);
@@ -13,14 +13,13 @@ export class InitSchema1756072224635 implements MigrationInterface {
         await queryRunner.query(`CREATE TABLE "media_outbox" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "idempotencyKey" text NOT NULL, "status" "public"."media_outbox_status_enum" NOT NULL DEFAULT 'pending', "eventType" character varying NOT NULL, "payload" text NOT NULL, "publishedAt" TIMESTAMP, "batch_id" uuid NOT NULL, "attempts" integer NOT NULL DEFAULT '0', "nextAttemptAt" TIMESTAMP WITH TIME ZONE, "batchId" uuid, CONSTRAINT "UQ_fe0c0e0ceab75246419175c85ef" UNIQUE ("batch_id"), CONSTRAINT "REL_88a6e5396029427a0ee51c6d1c" UNIQUE ("batchId"), CONSTRAINT "PK_aa7595be77e116ea7696959e92c" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE UNIQUE INDEX "IDX_MEDIA_OUTBOX_IDEMPOTENCY_KEY" ON "media_outbox" ("idempotencyKey") `);
         await queryRunner.query(`CREATE INDEX "IDX_MEDIA_OUTBOX_STATUS" ON "media_outbox" ("status") `);
-        await queryRunner.query(`CREATE TYPE "public"."MEDIA_BATCH_status_enum" AS ENUM('pending', 'completed', 'failed')`);
-        await queryRunner.query(`CREATE TABLE "MEDIA_BATCH" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "entityId" text NOT NULL, "idempotencyKey" text NOT NULL, "status" "public"."MEDIA_BATCH_status_enum" NOT NULL DEFAULT 'pending', "processedAt" TIMESTAMP WITH TIME ZONE, CONSTRAINT "IDX_MEDIA_BATCH_ENTITY_ID_IDEMKEY" UNIQUE ("entityId", "idempotencyKey"), CONSTRAINT "PK_7d8ccc5b4ee2df1c28aca6be4eb" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE INDEX "IDX_MEDIA_BATCH_PROCESSED_AT" ON "MEDIA_BATCH" ("processedAt") `);
-        await queryRunner.query(`CREATE INDEX "IDX_MEDIA_BATCH_ENTITY_ID" ON "MEDIA_BATCH" ("entityId") `);
+        await queryRunner.query(`CREATE TYPE "public"."media_batch_status_enum" AS ENUM('pending', 'completed', 'failed')`);
+        await queryRunner.query(`CREATE TABLE "media_batch" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "entityId" text NOT NULL, "idempotencyKey" text NOT NULL, "status" "public"."media_batch_status_enum" NOT NULL DEFAULT 'pending', "processedAt" TIMESTAMP WITH TIME ZONE, CONSTRAINT "IDX_MEDIA_BATCH_ENTITY_ID_IDEMKEY" UNIQUE ("entityId", "idempotencyKey"), CONSTRAINT "PK_5db6887247ade810bb0020ddbef" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE INDEX "IDX_MEDIA_BATCH_PROCESSED_AT" ON "media_batch" ("processedAt") `);
+        await queryRunner.query(`CREATE INDEX "IDX_MEDIA_BATCH_ENTITY_ID" ON "media_batch" ("entityId") `);
         await queryRunner.query(`CREATE TYPE "public"."media_status_enum" AS ENUM('pending_upload', 'ready', 'rejected', 'failed')`);
-        await queryRunner.query(`CREATE TABLE "media" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "batchId" uuid NOT NULL, "url" character varying(255) NOT NULL, "entity_type" character varying(50) NOT NULL, "description" text, "cfId" text NOT NULL, "mime" text NOT NULL, "size" bigint NOT NULL, "status" "public"."media_status_enum" NOT NULL DEFAULT 'pending_upload', "idempotencyKey" text NOT NULL, "expiresAt" TIMESTAMP WITH TIME ZONE, "entityId" uuid, CONSTRAINT "UQ_42a60c07e4b566f0cc06a1eaaff" UNIQUE ("url"), CONSTRAINT "PK_f4e0fcac36e050de337b670d8bd" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "media" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "entityId" uuid NOT NULL, "batchId" uuid NOT NULL, "url" character varying(255) NOT NULL, "description" text, "cfId" text NOT NULL, "mime" text NOT NULL, "size" bigint NOT NULL, "status" "public"."media_status_enum" NOT NULL DEFAULT 'pending_upload', "idempotencyKey" text NOT NULL, "expiresAt" TIMESTAMP WITH TIME ZONE, CONSTRAINT "UQ_42a60c07e4b566f0cc06a1eaaff" UNIQUE ("url"), CONSTRAINT "PK_f4e0fcac36e050de337b670d8bd" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE INDEX "IDX_MEDIA_STATUS" ON "media" ("status") `);
-        await queryRunner.query(`CREATE INDEX "IDX_MEDIA_ENTITY_TYPE" ON "media" ("entity_type") `);
         await queryRunner.query(`CREATE INDEX "IDX_MEDIA_URL" ON "media" ("url") `);
         await queryRunner.query(`CREATE INDEX "IDX_MEDIA_ENTITY" ON "media" ("entityId") `);
         await queryRunner.query(`CREATE TYPE "public"."entities_type_enum" AS ENUM('product', 'person', 'service', 'experience', 'event', 'place')`);
@@ -35,9 +34,9 @@ export class InitSchema1756072224635 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "auth" ADD CONSTRAINT "FK_373ead146f110f04dad60848154" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "rating" ADD CONSTRAINT "FK_a74c512ccac42c2958f71188eb7" FOREIGN KEY ("entityId") REFERENCES "entities"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "rating" ADD CONSTRAINT "FK_a6c53dfc89ba3188b389ef29a62" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "media_outbox" ADD CONSTRAINT "FK_88a6e5396029427a0ee51c6d1cd" FOREIGN KEY ("batchId") REFERENCES "MEDIA_BATCH"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "media_outbox" ADD CONSTRAINT "FK_88a6e5396029427a0ee51c6d1cd" FOREIGN KEY ("batchId") REFERENCES "media_batch"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "media" ADD CONSTRAINT "FK_9aaae81aef2d184487da8476b84" FOREIGN KEY ("entityId") REFERENCES "entities"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "media" ADD CONSTRAINT "FK_87ca0980dbcfa48e101403655d1" FOREIGN KEY ("batchId") REFERENCES "MEDIA_BATCH"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "media" ADD CONSTRAINT "FK_87ca0980dbcfa48e101403655d1" FOREIGN KEY ("batchId") REFERENCES "media_batch"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
@@ -58,14 +57,13 @@ export class InitSchema1756072224635 implements MigrationInterface {
         await queryRunner.query(`DROP TYPE "public"."entities_type_enum"`);
         await queryRunner.query(`DROP INDEX "public"."IDX_MEDIA_ENTITY"`);
         await queryRunner.query(`DROP INDEX "public"."IDX_MEDIA_URL"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_MEDIA_ENTITY_TYPE"`);
         await queryRunner.query(`DROP INDEX "public"."IDX_MEDIA_STATUS"`);
         await queryRunner.query(`DROP TABLE "media"`);
         await queryRunner.query(`DROP TYPE "public"."media_status_enum"`);
         await queryRunner.query(`DROP INDEX "public"."IDX_MEDIA_BATCH_ENTITY_ID"`);
         await queryRunner.query(`DROP INDEX "public"."IDX_MEDIA_BATCH_PROCESSED_AT"`);
-        await queryRunner.query(`DROP TABLE "MEDIA_BATCH"`);
-        await queryRunner.query(`DROP TYPE "public"."MEDIA_BATCH_status_enum"`);
+        await queryRunner.query(`DROP TABLE "media_batch"`);
+        await queryRunner.query(`DROP TYPE "public"."media_batch_status_enum"`);
         await queryRunner.query(`DROP INDEX "public"."IDX_MEDIA_OUTBOX_STATUS"`);
         await queryRunner.query(`DROP INDEX "public"."IDX_MEDIA_OUTBOX_IDEMPOTENCY_KEY"`);
         await queryRunner.query(`DROP TABLE "media_outbox"`);
