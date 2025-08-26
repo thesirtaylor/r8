@@ -9,7 +9,7 @@ export enum MediaBatchStatus {
   FAILED = 'failed',
 }
 
-@Entity('MEDIA_BATCH')
+@Entity('media_batch')
 @Index('IDX_MEDIA_BATCH_ENTITY_ID', ['entityId'])
 @Index('IDX_MEDIA_BATCH_PROCESSED_AT', ['processedAt'])
 @Unique('IDX_MEDIA_BATCH_ENTITY_ID_IDEMKEY', ['entityId', 'idempotencyKey'])

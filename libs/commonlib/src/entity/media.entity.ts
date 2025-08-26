@@ -1,4 +1,4 @@
-import { Column, Entity, Index, ManyToOne } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from './base_entity.entity';
 import { TheEntity } from './the_entity.entity';
 import { MediaBatch } from './media_batch.entity';
@@ -17,46 +17,46 @@ export enum MediaType {
 @Entity({ name: 'media' })
 @Index('IDX_MEDIA_ENTITY', ['entity'])
 @Index('IDX_MEDIA_URL', ['url'])
-@Index('IDX_MEDIA_ENTITY_TYPE', ['entityType'])
 @Index('IDX_MEDIA_STATUS', ['status'])
 export class Media extends BaseEntity {
+  @Column({ name: 'entityId', type: 'uuid', nullable: false })
+  entityId!: string;
+
   @ManyToOne(() => TheEntity, (entity) => entity.media, {
     onDelete: 'CASCADE',
   })
-  entity: TheEntity;
+  entity!: TheEntity;
 
   @ManyToOne(() => MediaBatch, (batch) => batch.items, {
     onDelete: 'CASCADE',
   })
-  batch: MediaBatch;
+  @JoinColumn({ name: 'batchId' })
+  batch!: MediaBatch;
 
   @Column({ type: 'uuid', nullable: false })
-  batchId: string;
+  batchId!: string;
 
   @Column({ type: 'varchar', length: 255, unique: true })
-  url: string;
-
-  @Column({ type: 'varchar', length: 50, nullable: false, name: 'entity_type' })
-  entityType: string; // e.g., 'image', 'video'
+  url!: string;
 
   @Column({ type: 'text', nullable: true })
-  description: string;
+  description!: string;
 
   @Column({ type: 'text' })
-  cfId: string; //cloudflareid
+  cfId!: string; //cloudflareid
 
   @Column({ type: 'text' })
-  mime: string;
+  mime!: string;
 
   @Column({ type: 'bigint' })
-  size: string;
+  size!: string;
 
   @Column({
     type: 'enum',
     enum: MediaStatus,
     default: MediaStatus.PENDING_UPLOAD,
   })
-  status: MediaStatus;
+  status!: MediaStatus;
 
   @Column({ type: 'text', nullable: false })
   idempotencyKey!: string | null;
