@@ -29,7 +29,7 @@ export class MediaController {
     const { user } = req;
     this.logger.log({ user });
 
-    await this.mediaService.initiateUpload(payload);
+    return await this.mediaService.initiateUpload(payload);
   }
 
   @Post('/uploads/finalise')
