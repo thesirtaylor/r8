@@ -8,10 +8,9 @@ service MediaService {
 }
 
 message UploadMediaItem {
-  string entityType = 1;
-  string mime = 2;
-  string size = 3;
-  optional string description = 4;
+  string mime = 1;
+  string size = 2;
+  optional string description = 3;
 }
 
 message UploadMediaRequest {
