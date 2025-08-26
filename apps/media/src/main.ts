@@ -6,6 +6,8 @@ import {
   LoggingInterceptor,
   protoPath,
 } from '@app/commonlib';
+import { protobufPackage } from '@app/commonlib/protos_output/media.pb';
+import { protobufPackage as HealthProtoBuf } from '@app/commonlib/protos_output/health.pb';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -22,7 +24,7 @@ async function bootstrap() {
     transport: Transport.GRPC,
     options: {
       url: process.env.MEDIA_GRPC,
-      package: [],
+      package: [protobufPackage, HealthProtoBuf],
       protoPath: [protoPath('media.proto'), protoPath('health.proto')],
     },
   });

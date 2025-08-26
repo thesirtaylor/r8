@@ -6,6 +6,7 @@ import {
   Media,
   MediaStatus,
   MediaOutbox,
+  TheEntity,
 } from '@app/commonlib';
 import {
   FinaliseUploadRequest,
@@ -15,7 +16,7 @@ import { Injectable } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { createHash } from 'crypto';
 import { status as GrpcStatus } from '@grpc/grpc-js';
-import { DataSource, DeepPartial } from 'typeorm';
+import { DataSource, DeepPartial, QueryFailedError } from 'typeorm';
 
 // abstract class CloudflareImages {
 //   verify: any;
@@ -37,7 +38,34 @@ export class MediaService {
     // private stream: CloudflareStream,
   ) {}
 
-  async initiateUpload(payload: UploadMediaRequest) {
+  private isPGError = (
+    e: any,
+  ): e is QueryFailedError & { code?: string; detail?: string } =>
+    e instanceof QueryFailedError;
+
+  private asRpc(step: string, err: any, extra?: Record<string, any>) {
+    const payload: any = {
+      step,
+      message: err?.message ?? String(err),
+      code: this.isPGError(err) ? err.code : err?.code,
+      ...extra,
+    };
+    return new RpcException(payload);
+  }
+
+  private async withContext<T>(
+    step: string,
+    fn: () => Promise<T>,
+    extra?: Record<string, any>,
+  ) {
+    try {
+      return await fn();
+    } catch (error) {
+      throw this.asRpc(step, error, extra);
+    }
+  }
+
+  async InitiateUpload(payload: UploadMediaRequest) {
     if (!payload.items?.length)
       throw new RpcException('items required for upload');
 
@@ -48,122 +76,179 @@ export class MediaService {
     const urlTTLSec = 900;
     const urlTTL = new Date(now.getTime() + urlTTLSec * 1000); //let cloudflare determine this
 
+    const ctx = { idempotencyKey, entityId };
+
     return await this.ds.transaction('SERIALIZABLE', async (manager) => {
-      manager
-        .createQueryBuilder()
-        .insert()
-        .into(MediaBatch)
-        .values({
-          entityId,
-          idempotencyKey,
-          status: MediaBatchStatus.PENDING,
-        })
-        .orIgnore()
-        .execute();
+      try {
+        await this.withContext(
+          'insert MediaBatch',
+          async () => {
+            await manager
+              .createQueryBuilder()
+              .insert()
+              .into(MediaBatch)
+              .values({
+                entityId,
+                idempotencyKey,
+                status: MediaBatchStatus.PENDING,
+              })
+              .orIgnore()
+              .execute();
+          },
+          ctx,
+        );
 
-      const batch = await manager
-        .getRepository(MediaBatch)
-        .createQueryBuilder('batch')
-        .where(
-          'batch.idempotencyKey = :idempotencyKey AND batch.entityId = :entityId',
-          { idempotencyKey, entityId },
-        )
-        .setLock('pessimistic_write')
-        .getOneOrFail();
+        const batch = await this.withContext(
+          'select MediaBatch (for update)',
+          async () => {
+            return await manager
+              .getRepository(MediaBatch)
+              .createQueryBuilder('batch')
+              .where(
+                'batch.idempotencyKey = :idempotencyKey AND batch.entityId = :entityId',
+                { idempotencyKey, entityId },
+              )
+              .setLock('pessimistic_write')
+              .getOneOrFail();
+          },
+          ctx,
+        );
 
-      const desired = payload.items.map((it) => {
-        const itemKey = createHash('sha256')
-          .update(`${payload.entityId}:${it.mime}:${it.size}`)
-          .digest('hex');
-        return { itemKey, ...it };
-      });
+        const desired = payload.items.map((it) => {
+          const itemKey = createHash('sha256')
+            .update(`${payload.entityId}:${it.mime}:${it.size}`)
+            .digest('hex');
+          return { itemKey, ...it };
+        });
 
-      const repo = manager.getRepository(Media);
-      const existing = await repo.find({ where: { batchId: batch.id } });
-      const byKey = new Map(existing.map((e) => [e.idempotencyKey, e]));
+        const repo = manager.getRepository(Media);
 
-      const upserts: DeepPartial<Media>[] = [];
-      const response: Array<{
-        idempotencyKey: string;
-        url?: string;
-        cfId?: string;
-        mime?: string;
-        status: Media['status'];
-        expiresAt?: Date | null;
-        reason?: string;
-      }> = [];
-
-      for (const des of desired) {
-        const failCheck = des.description; //check item validity here
-        if (failCheck) {
-          this.logger.warn(`Item ${des} failed validation check`);
-          response.push({
-            idempotencyKey: des.itemKey,
-            status: MediaStatus.REJECTED,
-            reason: failCheck,
-          });
-          continue;
-        }
-
-        const previous = byKey.get(des.itemKey); //should this be des.itemKey or des.idempotencyKey?
-        const needsNewUrl =
-          !previous ||
-          !previous.url ||
-          previous.status !== MediaStatus.READY ||
-          previous.expiresAt < now;
-
-        if (needsNewUrl) {
-          const uploadUrl = ''; //we call cloudflare here, right?
-          upserts.push({
-            id: previous?.id,
-            url: uploadUrl,
-            cfId: uploadUrl,
-            mime: des.mime,
-            size: des.size,
-            status: MediaStatus.PENDING_UPLOAD,
-            idempotencyKey: des.itemKey,
+        const existing = await this.withContext(
+          'select Media by batchId',
+          async () => {
+            return await repo.find({ where: { batchId: batch.id } });
+          },
+          {
+            ...ctx,
             batchId: batch.id,
-            entityType: des.entityType,
-            batch: { id: batch.id },
-            entity: { id: payload.entityId },
-            expiresAt: urlTTL,
-          });
+          },
+        );
+        const byKey = new Map(existing.map((e) => [e.idempotencyKey, e]));
 
-          response.push({
-            idempotencyKey: des.itemKey,
-            status: MediaStatus.PENDING_UPLOAD,
-            url: uploadUrl,
-            expiresAt: urlTTL,
-          });
-        } else {
-          response.push({
-            idempotencyKey: previous.idempotencyKey,
-            status: previous.status,
-            url: previous.url,
-          });
+        const upserts: DeepPartial<Media>[] = [];
+        const response: Array<{
+          idempotencyKey: string;
+          url?: string;
+          cfId?: string;
+          mime?: string;
+          status: Media['status'];
+          expiresAt?: Date | null;
+          reason?: string;
+        }> = [];
+
+        for (const des of desired) {
+          const failCheck = des.description; //check item validity here
+          if (failCheck) {
+            this.logger.warn(
+              { ...ctx, itemKey: des, reason: failCheck },
+              `Item failed validation check`,
+            );
+            response.push({
+              idempotencyKey: des.itemKey,
+              status: MediaStatus.REJECTED,
+              reason: failCheck,
+            });
+            continue;
+          }
+
+          const previous = byKey.get(des.itemKey); //should this be des.itemKey or des.idempotencyKey?
+          const needsNewUrl =
+            !previous ||
+            !previous.url ||
+            previous.status !== MediaStatus.READY ||
+            previous.expiresAt < now;
+
+          if (needsNewUrl) {
+            const uploadUrl = `${des.size}-${des.mime}`; //we call cloudflare here, right?
+            upserts.push({
+              id: previous?.id,
+              url: uploadUrl,
+              cfId: uploadUrl,
+              mime: des.mime,
+              size: des.size,
+              status: MediaStatus.PENDING_UPLOAD,
+              idempotencyKey: des.itemKey,
+              batchId: batch.id,
+              batch: { id: batch.id },
+              entityId,
+              entity: { id: payload.entityId },
+              expiresAt: urlTTL,
+            });
+
+            response.push({
+              idempotencyKey: des.itemKey,
+              status: MediaStatus.PENDING_UPLOAD,
+              url: uploadUrl,
+              expiresAt: urlTTL,
+            });
+          } else {
+            response.push({
+              idempotencyKey: previous.idempotencyKey,
+              status: previous.status,
+              url: previous.url,
+            });
+          }
         }
+
+        if (upserts.length) {
+          await this.withContext(
+            'assert entity exists',
+            async () => {
+              await manager
+                .getRepository(TheEntity)
+                .findOneOrFail({ where: { id: entityId } });
+            },
+            ctx,
+          );
+
+          await this.withContext(
+            'save Media upserts',
+            async () => {
+              await repo.save(upserts);
+            },
+            {
+              ...ctx,
+              upserts: upserts.length,
+            },
+          );
+        }
+
+        this.logger.log(
+          {
+            ...ctx,
+            batchId: batch.id,
+            urlTTLSeconds: urlTTLSec,
+            createdItems: upserts.length,
+            items: response.map((i) => ({
+              key: i.idempotencyKey,
+              status: i.status,
+            })),
+          },
+          'InitiateUpload success',
+        );
+
+        return {
+          batchId: batch.id,
+          entityId: batch.entityId,
+        };
+      } catch (error) {
+        this.logger.error({ error });
+        throw new RpcException({ message: error.message });
       }
-
-      if (upserts.length) {
-        await repo.save(upserts);
-      }
-
-      this.logger.log({
-        batchId: batch.id,
-        entityid: batch.entityId,
-        batchIdempotencyKey: idempotencyKey,
-        urlTTLSeconds: urlTTLSec,
-        items: response,
-      });
-
-      return {
-        batchId: batch.id,
-        entityId: batch.entityId,
-      };
     });
   }
 
-  async finaliseUpload(payload: FinaliseUploadRequest) {
+  async FinaliseUpload(payload: FinaliseUploadRequest) {
     const { batchId, entityId } = payload;
     return await this.ds.transaction('SERIALIZABLE', async (manager) => {
       const batch = await manager

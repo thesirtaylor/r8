@@ -18,13 +18,13 @@ export class MediaController {
   async initiateUpload(
     payload: UploadMediaRequest,
   ): Promise<UploadMediaResponse | Observable<UploadMediaResponse>> {
-    return await this.mediaService.initiateUpload(payload);
+    return await this.mediaService.InitiateUpload(payload);
   }
 
   @GrpcMethod(MEDIA_SERVICE_NAME, 'finaliseUpload')
   async finaliseUpload(
     payload: FinaliseUploadRequest,
   ): Promise<FinaliseUploadResponse | Observable<FinaliseUploadResponse>> {
-    return await this.mediaService.finaliseUpload(payload);
+    return await this.mediaService.FinaliseUpload(payload);
   }
 }
