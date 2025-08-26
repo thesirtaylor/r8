@@ -11,7 +11,6 @@ import { Observable } from "rxjs";
 export const protobufPackage = "media";
 
 export interface UploadMediaItem {
-  entityType: string;
   mime: string;
   size: string;
   description?: string | undefined;
