@@ -248,7 +248,6 @@ export class MediaService {
     });
   }
 
-  //implement withContext for FinaliseUpload
   async FinaliseUpload(payload: FinaliseUploadRequest) {
     const { batchId, entityId } = payload;
     return await this.ds.transaction('SERIALIZABLE', async (manager) => {
