@@ -248,169 +248,217 @@ export class MediaService {
     });
   }
 
+  //implement withContext for FinaliseUpload
   async FinaliseUpload(payload: FinaliseUploadRequest) {
     const { batchId, entityId } = payload;
     return await this.ds.transaction('SERIALIZABLE', async (manager) => {
-      const batch = await manager
-        .getRepository(MediaBatch)
-        .createQueryBuilder('batch')
-        .where('batch.id = :batchId AND batch.entityId = :entityId', {
-          batchId,
-          entityId,
-        })
-        .setLock('pessimistic_write')
-        .getOneOrFail();
+      try {
+        const ctx = { batchId, entityId };
+        const batch = await this.withContext(
+          'get lock on Media batch',
+          async () => {
+            return await manager
+              .getRepository(MediaBatch)
+              .createQueryBuilder('batch')
+              .where('batch.id = :batchId AND batch.entityId = :entityId', {
+                batchId,
+                entityId,
+              })
+              .setLock('pessimistic_write')
+              .getOneOrFail();
+          },
+          ctx,
+        );
 
-      if (!batch) {
-        throw new RpcException({
-          code: GrpcStatus.NOT_FOUND,
-          message: 'Batch not found',
-        });
-      }
-
-      if (batch.status === MediaBatchStatus.COMPLETED) {
-        const count = await manager
-          .getRepository(Media)
-          .count({ where: { batchId } });
-
-        return { batchId, status: 'completed' as const, readyCount: count };
-      }
-
-      if (batch.status !== MediaBatchStatus.PENDING) {
-        throw new RpcException({
-          code: GrpcStatus.FAILED_PRECONDITION,
-          message: 'Batch is not in a valid state for finalisation',
-        });
-      }
-
-      const items = await manager
-        .getRepository(Media)
-        .createQueryBuilder('media')
-        .where('media.batchId = :batchId', { batchId })
-        .setLock('pessimistic_write')
-        .getMany();
-
-      if (items.length === 0) {
-        throw new RpcException({
-          code: GrpcStatus.NOT_FOUND,
-          message: 'No media items found for this batch',
-        });
-      }
-
-      const illegal = items.filter(
-        (x) =>
-          x.status !== MediaStatus.PENDING_UPLOAD &&
-          x.status !== MediaStatus.FAILED,
-      );
-
-      if (illegal.length) {
-        throw new RpcException('batch contains non-pending items');
-      }
-
-      const failures: Array<{ id: string; reason: string }> = [];
-      const verified: Array<{
-        id: string;
-        cfId: string;
-        url: string;
-        size?: string;
-        mime?: string;
-      }> = [];
-
-      for (const item of items) {
-        try {
-          // const verify = await this.cloudflare.verify({
-          //   cfId: item.cfId,
-          //   mime: item.mime,
-          //   size: item.size,
-          //   idempotencyKey: item.idempotencyKey,
-          // });
-          const verify = {
-            idempotencyKey: item.idempotencyKey,
-            success: true,
-            reason: '',
-          };
-
-          if (verify.success) {
-            item.status = MediaStatus.READY;
-            verified.push({
-              id: item.id,
-              cfId: item.cfId,
-              url: item.url,
-              size: item.size,
-              mime: item.mime,
-            });
-          } else {
-            item.status = MediaStatus.FAILED;
-            failures.push({ id: item.id, reason: verify.reason });
-          }
-        } catch (error) {
-          this.logger.error(
-            `Failed to verify media ${item.id}: ${error.message}`,
-            error.stack,
-          );
-          item.status = MediaStatus.FAILED;
-          failures.push({ id: item.id, reason: error.message });
+        if (!batch) {
+          throw new RpcException({
+            code: GrpcStatus.NOT_FOUND,
+            message: 'Batch not found',
+          });
         }
-      }
 
-      if (failures.length) {
-        this.logger.warn(
-          `Batch ${batchId} has ${failures.length} failed items`,
+        if (batch.status === MediaBatchStatus.COMPLETED) {
+          const count = await this.withContext(
+            'count completed upload',
+            async () => {
+              return await manager
+                .getRepository(Media)
+                .count({ where: { batchId } });
+            },
+            {
+              batchId,
+            },
+          );
+
+          return { batchId, status: 'completed' as const, readyCount: count };
+        }
+
+        if (batch.status !== MediaBatchStatus.PENDING) {
+          throw new RpcException({
+            code: GrpcStatus.FAILED_PRECONDITION,
+            message: 'Batch is not in a valid state for finalisation',
+          });
+        }
+
+        const items = await this.withContext(
+          'get media items with lock on media',
+          async () => {
+            return await manager
+              .getRepository(Media)
+              .createQueryBuilder('media')
+              .where('media.batchId = :batchId', { batchId })
+              .setLock('pessimistic_write')
+              .getMany();
+          },
+          {
+            batchId,
+          },
         );
 
-        throw new RpcException({
-          code: GrpcStatus.INTERNAL,
-          message: 'finalize verification failed',
-          details: failures,
-        });
-      }
+        if (items.length === 0) {
+          throw new RpcException({
+            code: GrpcStatus.NOT_FOUND,
+            message: 'No media items found for this batch',
+          });
+        }
 
-      if (verified.length) {
-        const byId = new Map(verified.map((v) => [v.id, v]));
+        const illegal = items.filter(
+          (x) =>
+            x.status !== MediaStatus.PENDING_UPLOAD &&
+            x.status !== MediaStatus.FAILED,
+        );
 
-        const updates = items.map((it) => {
-          const v = byId.get(it.id)!;
-          return {
-            id: it.id,
-            status: MediaStatus.READY,
-            cfId: v.cfId,
-            url: v.url,
-          } as Partial<Media>;
-        });
+        if (illegal.length) {
+          throw new RpcException('batch contains non-pending items');
+        }
 
-        await manager.getRepository(Media).save(updates);
-      }
+        const failures: Array<{ id: string; reason: string }> = [];
+        const verified: Array<{
+          id: string;
+          cfId: string;
+          url: string;
+          size?: string;
+          mime?: string;
+        }> = [];
 
-      const outboxIdempotencyKey = `${entityId}:${batchId}:completed`;
-      await manager.getRepository(MediaOutbox).insert({
-        idempotencyKey: outboxIdempotencyKey,
-        status: MediaBatchStatus.PENDING,
-        eventType: 'media.batch.completed',
-        payload: JSON.stringify({
+        for (const item of items) {
+          try {
+            // const verify = await this.cloudflare.verify({
+            //   cfId: item.cfId,
+            //   mime: item.mime,
+            //   size: item.size,
+            //   idempotencyKey: item.idempotencyKey,
+            // });
+            const verify = {
+              idempotencyKey: item.idempotencyKey,
+              success: true,
+              reason: '',
+            };
+
+            if (verify.success) {
+              item.status = MediaStatus.READY;
+              verified.push({
+                id: item.id,
+                cfId: item.cfId,
+                url: item.url,
+                size: item.size,
+                mime: item.mime,
+              });
+            } else {
+              item.status = MediaStatus.FAILED;
+              failures.push({ id: item.id, reason: verify.reason });
+            }
+          } catch (error) {
+            this.logger.error(
+              `Failed to verify media ${item.id}: ${error.message}`,
+              error.stack,
+            );
+            item.status = MediaStatus.FAILED;
+            failures.push({ id: item.id, reason: error.message });
+          }
+        }
+
+        if (failures.length) {
+          this.logger.warn(
+            `Batch ${batchId} has ${failures.length} failed items`,
+          );
+
+          throw new RpcException({
+            code: GrpcStatus.INTERNAL,
+            message: 'finalize verification failed',
+            details: failures,
+          });
+        }
+
+        if (verified.length) {
+          const byId = new Map(verified.map((v) => [v.id, v]));
+
+          const updates = items.map((it) => {
+            const v = byId.get(it.id)!;
+            return {
+              id: it.id,
+              status: MediaStatus.READY,
+              cfId: v.cfId,
+              url: v.url,
+            } as Partial<Media>;
+          });
+
+          await this.withContext('save media updates', async () => {
+            await manager.getRepository(Media).save(updates);
+          });
+        }
+
+        const outboxIdempotencyKey = `${entityId}:${batchId}:completed`;
+
+        await this.withContext(
+          'push data to media outbox',
+          async () => {
+            await manager.getRepository(MediaOutbox).insert({
+              idempotencyKey: outboxIdempotencyKey,
+              status: MediaBatchStatus.PENDING,
+              eventType: 'media.batch.completed',
+              payload: JSON.stringify({
+                batchId,
+                entityId,
+                itemIds: items.map((i) => i.id),
+                urls: verified.map((v) => v.url),
+                cfIds: verified.map((v) => v.cfId),
+                count: items.length,
+                at: new Date().toISOString(),
+              }),
+              batchId,
+              attempts: 0,
+            });
+          },
+          {
+            items,
+            verified,
+            batchId,
+          },
+        );
+
+        await this.withContext(
+          'update media batch for completed process',
+          async () => {
+            await manager
+              .getRepository(MediaBatch)
+              .update(
+                { id: batchId },
+                { status: MediaBatchStatus.COMPLETED, processedAt: new Date() },
+              );
+          },
+          { batchId },
+        );
+
+        return {
           batchId,
-          entityId,
-          itemIds: items.map((i) => i.id),
-          urls: verified.map((v) => v.url),
-          cfIds: verified.map((v) => v.cfId),
-          count: items.length,
-          at: new Date().toISOString(),
-        }),
-        batchId,
-        attempts: 0,
-      });
-
-      await manager
-        .getRepository(MediaBatch)
-        .update(
-          { id: batchId },
-          { status: MediaBatchStatus.COMPLETED, processedAt: new Date() },
-        );
-
-      return {
-        batchId,
-        status: 'completed' as const,
-        readyCount: items.length,
-      };
+          status: 'completed' as const,
+          readyCount: items.length,
+        };
+      } catch (error) {
+        this.logger.error({ error });
+        throw new RpcException({ message: error.message });
+      }
     });
   }
 
