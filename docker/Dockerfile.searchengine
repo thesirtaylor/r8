@@ -1,35 +1,79 @@
-# docker/Dockerfile.searchengine
-
-# === Stage 1: Build ===
-FROM node:20-alpine AS builder
+# ============================================
+# Base Stage - Common setup for all stages
+# ============================================
+FROM node:20-alpine AS base
 
 WORKDIR /app
 
-# Enable Yarn via Corepack
-RUN corepack enable && corepack prepare yarn@1.22.19 --activate
+RUN apk add --no-cache \
+    dumb-init \
+    libc6-compat \
+    && addgroup --system --gid 1001 nodejs \
+    && adduser --system --uid 1001 nestjs
 
-# Copy dependency and config files
-COPY ../package.json ../yarn.lock ../tsconfig*.json ../nest-cli.json ./
-COPY ../libs ./libs
-COPY ../apps ./apps
+# Enable Corepack to use Yarn
+RUN corepack enable
 
-# Install dependencies
+ENV NODE_ENV=production
+
+# ============================================
+# Dependencies Stage - Install all dependencies
+# ============================================
+FROM base AS deps
+COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile
 
-# Build commonlib and searchengine only
+# ============================================
+# Development Stage - For local development
+# ============================================
+FROM base AS development
+ENV NODE_ENV=development
+COPY package.json yarn.lock ./
+RUN yarn install
+COPY --chown=nestjs:nodejs . .
+EXPOSE 3000
+USER nestjs
+CMD ["yarn", "start:searchengine:dev"]
+
+# ============================================
+# Builder Stage - Build the application
+# ============================================
+FROM base AS builder
+COPY package.json yarn.lock ./
+RUN yarn install --frozen-lockfile
+# Copy commonlib first (shared library)
+COPY --chown=nestjs:nodejs libs ./libs
+# Copy the specific app
+COPY --chown=nestjs:nodejs apps/searchengine ./apps/searchengine
+# Copy nest-cli and tsconfig
+COPY --chown=nestjs:nodejs nest-cli.json tsconfig.json tsconfig.build.json ./
 RUN yarn build:searchengine
+RUN RUN yarn install --production --frozen-lockfile && yarn cache clean
 
-# === Stage 2: Runtime ===
-FROM node:20-alpine
+# ============================================
+# Production Stage - Optimized runtime image
+# ============================================
+FROM base AS production
+ENV NODE_ENV=production
+COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
+COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nestjs:nodejs /app/package.json ./
+COPY --from=builder --chown=nestjs:nodejs /app/yarn.lock ./
+COPY --from=builder --chown=nestjs:nodejs /app/libs/commonlib/src/migrations ./libs/commonlib/src/migrations
 
-WORKDIR /app
+COPY --chown=nestjs:nodejs scripts ./scripts
 
-# Enable Yarn in runtime too (if needed for CLI tasks)
-RUN corepack enable && corepack prepare yarn@stable --activate
+RUN mkdir -p logs && chown nestjs:nodejs logs
+EXPOSE 3000
+EXPOSE 50053
 
-# Copy only what's needed to run
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
-COPY ../package.json ./
-
+USER nestjs
+ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "dist/apps/searchengine/main"]
+
+# ============================================
+# Test Stage - For running tests
+# ============================================
+FROM development AS test
+COPY --chown=nestjs:nodejs test ./test
+CMD ["yarn", "test:e2e"]
