@@ -7,6 +7,7 @@ import {
   OutboxRepository,
   TheEntity,
   RedisModule,
+  MediaOutboxRepository,
 } from '@app/commonlib';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -25,6 +26,6 @@ if (!nodeUrl) {
     RedisModule,
   ],
   controllers: [SearchengineController],
-  providers: [SearchengineService, OutboxRepository],
+  providers: [SearchengineService, OutboxRepository, MediaOutboxRepository],
 })
 export class SearchengineModule {}

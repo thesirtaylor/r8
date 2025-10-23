@@ -51,7 +51,7 @@ export class SearchengineService implements OnModuleDestroy, OnModuleInit {
       this.logger.error({ error });
     }
     if (!exists) {
-      this.logger.log(`Creating Elasticseearch ${this.INDEX}`);
+      this.logger.log(`Creating Elasticseearch ${this.INDEX} index`);
       await this.es.indices.create({
         index: this.INDEX,
 
@@ -106,12 +106,51 @@ export class SearchengineService implements OnModuleDestroy, OnModuleInit {
             },
             socials: { type: 'object', dynamic: true },
             location: { type: 'geo_point' },
+            hasMedia: { type: 'boolean' },
+            mediaCount: { type: 'integer' },
+            media: {
+              type: 'object',
+              properties: {
+                urls: { type: 'keyword' },
+                cfIds: { type: 'keyword' },
+                count: { type: 'integer' },
+                lastUpdated: { type: 'date' },
+              },
+            },
           } as any,
         },
       });
       this.logger.log(`Index ${this.INDEX} created.`);
     } else {
       this.logger.log(`Index ${this.INDEX} already exists.`);
+
+      try {
+        await this.es.indices.putMapping({
+          index: this.INDEX,
+          body: {
+            properties: {
+              hasMedia: { type: 'boolean' },
+              mediaCount: { type: 'integer' },
+              media: {
+                type: 'object',
+                properties: {
+                  urls: { type: 'keyword' },
+                  cfIds: { type: 'keyword' },
+                  count: { type: 'integer' },
+                  lastUpdated: { type: 'date' },
+                },
+              },
+            },
+          },
+        });
+        this.logger.log('Updated mapping with media fields');
+      } catch (error) {
+        // Mapping might already exist, which is fine
+        this.logger.warn(
+          'Could not update mapping (might already exist)',
+          error,
+        );
+      }
     }
   }
 
