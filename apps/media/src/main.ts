@@ -12,13 +12,13 @@ import { protobufPackage as HealthProtoBuf } from '@app/commonlib/protos_output/
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  app.connectMicroservice({
-    transport: Transport.REDIS,
-    options: {
-      host: process.env.REDIS_HOST,
-      port: process.env.REDIS_PORT,
-    },
-  });
+  // app.connectMicroservice({
+  //   transport: Transport.REDIS,
+  //   options: {
+  //     host: process.env.REDIS_HOST,
+  //     port: process.env.REDIS_PORT,
+  //   },
+  // });
 
   app.connectMicroservice({
     transport: Transport.GRPC,

@@ -1,5 +1,4 @@
 import {
-  AppLoggerService,
   RedisService,
   MediaBatch,
   MediaBatchStatus,
@@ -7,6 +6,7 @@ import {
   MediaStatus,
   MediaOutbox,
   TheEntity,
+  AppLoggerService,
 } from '@app/commonlib';
 import {
   FinaliseUploadRequest,
@@ -17,16 +17,7 @@ import { RpcException } from '@nestjs/microservices';
 import { createHash } from 'crypto';
 import { status as GrpcStatus } from '@grpc/grpc-js';
 import { DataSource, DeepPartial, QueryFailedError } from 'typeorm';
-
-// abstract class CloudflareImages {
-//   verify: any;
-//   createUploadUrl: any;
-// }
-
-// abstract class CloudflareStream {
-//   verify: any;
-//   createUploadUrl: any;
-// }
+import { CloudflareServices } from './cloudflare.service';
 
 @Injectable()
 export class MediaService {
@@ -34,8 +25,7 @@ export class MediaService {
     private readonly cache: RedisService,
     private readonly logger: AppLoggerService,
     private ds: DataSource,
-    // private cloudflare: CloudflareImages,
-    // private stream: CloudflareStream,
+    private cloudflare: CloudflareServices,
   ) {}
 
   private isPGError = (
@@ -73,8 +63,6 @@ export class MediaService {
     const { entityId } = payload;
 
     const now = new Date();
-    const urlTTLSec = 900;
-    const urlTTL = new Date(now.getTime() + urlTTLSec * 1000); //let cloudflare determine this
 
     const ctx = { idempotencyKey, entityId };
 
@@ -147,55 +135,92 @@ export class MediaService {
         }> = [];
 
         for (const des of desired) {
-          const failCheck = des.description; //check item validity here
-          if (failCheck) {
+          //validation
+          if (!des.mime || !des.size) {
             this.logger.warn(
-              { ...ctx, itemKey: des, reason: failCheck },
-              `Item failed validation check`,
+              { ...ctx, itemKey: des.itemKey },
+              `Item missing required fields`,
             );
+
             response.push({
               idempotencyKey: des.itemKey,
               status: MediaStatus.REJECTED,
-              reason: failCheck,
+              reason: 'Missing mime type or size',
             });
             continue;
           }
-
-          const previous = byKey.get(des.itemKey); //should this be des.itemKey or des.idempotencyKey?
+          const previous = byKey.get(des.itemKey);
           const needsNewUrl =
             !previous ||
             !previous.url ||
             previous.status !== MediaStatus.READY ||
-            previous.expiresAt < now;
+            (previous.expiresAt && previous.expiresAt < now);
 
           if (needsNewUrl) {
-            const uploadUrl = `${des.size}-${des.mime}`; //we call cloudflare here, right?
-            upserts.push({
-              id: previous?.id,
-              url: uploadUrl,
-              cfId: uploadUrl,
-              mime: des.mime,
-              size: des.size,
-              status: MediaStatus.PENDING_UPLOAD,
-              idempotencyKey: des.itemKey,
-              batchId: batch.id,
-              batch: { id: batch.id },
-              entityId,
-              entity: { id: payload.entityId },
-              expiresAt: urlTTL,
-            });
+            try {
+              const cloudflareCreateUploadUrl =
+                await this.cloudflare.createUploadUrl({
+                  mime: des.mime,
+                  size: des.size,
+                  idempotencyKey: des.itemKey,
+                });
+              upserts.push({
+                id: previous?.id,
+                url: cloudflareCreateUploadUrl.uploadUrl,
+                cfId: cloudflareCreateUploadUrl.cfId,
+                mime: des.mime,
+                size: des.size,
+                status: MediaStatus.PENDING_UPLOAD,
+                idempotencyKey: des.itemKey,
+                batchId: batch.id,
+                batch: { id: batch.id },
+                entityId,
+                entity: { id: payload.entityId },
+                expiresAt: cloudflareCreateUploadUrl.expiresAt,
+              });
 
-            response.push({
-              idempotencyKey: des.itemKey,
-              status: MediaStatus.PENDING_UPLOAD,
-              url: uploadUrl,
-              expiresAt: urlTTL,
-            });
+              response.push({
+                idempotencyKey: des.itemKey,
+                status: MediaStatus.PENDING_UPLOAD,
+                url: cloudflareCreateUploadUrl.uploadUrl,
+                cfId: cloudflareCreateUploadUrl.cfId,
+                mime: des.mime,
+                expiresAt: cloudflareCreateUploadUrl.expiresAt,
+              });
+
+              this.logger.log(
+                {
+                  ...ctx,
+                  itemKey: des.itemKey,
+                  cfId: cloudflareCreateUploadUrl.cfId,
+                  mime: des.mime,
+                },
+                'Created upload URL',
+              );
+            } catch (error) {
+              this.logger.error(
+                {
+                  ...ctx,
+                  itemKey: des.itemKey,
+                  error: error.message,
+                },
+                'Failed to create upload URL',
+              );
+
+              response.push({
+                idempotencyKey: des.itemKey,
+                status: MediaStatus.REJECTED,
+                reason: `Failed to generate upload URL: ${error.message}`,
+              });
+            }
           } else {
             response.push({
               idempotencyKey: previous.idempotencyKey,
               status: previous.status,
               url: previous.url,
+              cfId: previous.url,
+              mime: previous.mime,
+              expiresAt: previous.expiresAt,
             });
           }
         }
@@ -227,11 +252,12 @@ export class MediaService {
           {
             ...ctx,
             batchId: batch.id,
-            urlTTLSeconds: urlTTLSec,
             createdItems: upserts.length,
+            totalItems: response.length,
             items: response.map((i) => ({
               key: i.idempotencyKey,
               status: i.status,
+              mime: i.mime,
             })),
           },
           'InitiateUpload success',
@@ -240,6 +266,7 @@ export class MediaService {
         return {
           batchId: batch.id,
           entityId: batch.entityId,
+          items: response,
         };
       } catch (error) {
         this.logger.error({ error });
@@ -282,7 +309,7 @@ export class MediaService {
             async () => {
               return await manager
                 .getRepository(Media)
-                .count({ where: { batchId } });
+                .count({ where: { batchId, status: MediaStatus.READY } });
             },
             {
               batchId,
@@ -328,7 +355,10 @@ export class MediaService {
         );
 
         if (illegal.length) {
-          throw new RpcException('batch contains non-pending items');
+          throw new RpcException({
+            code: GrpcStatus.FAILED_PRECONDITION,
+            message: 'batch contains non-pending items',
+          });
         }
 
         const failures: Array<{ id: string; reason: string }> = [];
@@ -342,17 +372,11 @@ export class MediaService {
 
         for (const item of items) {
           try {
-            // const verify = await this.cloudflare.verify({
-            //   cfId: item.cfId,
-            //   mime: item.mime,
-            //   size: item.size,
-            //   idempotencyKey: item.idempotencyKey,
-            // });
-            const verify = {
+            const verify = await this.cloudflare.verify({
+              cfId: item.cfId,
+              mime: item.mime,
               idempotencyKey: item.idempotencyKey,
-              success: true,
-              reason: '',
-            };
+            });
 
             if (verify.success) {
               item.status = MediaStatus.READY;
@@ -379,62 +403,75 @@ export class MediaService {
 
         if (failures.length) {
           this.logger.warn(
-            `Batch ${batchId} has ${failures.length} failed items`,
+            {
+              batchId,
+              failureCount: failures.length,
+              failures,
+            },
+            `Batch ${batchId} has ${failures.length} failed items out of ${items.length}`,
           );
 
-          throw new RpcException({
-            code: GrpcStatus.INTERNAL,
-            message: 'finalize verification failed',
-            details: failures,
+          // throw new RpcException({
+          //   code: GrpcStatus.INTERNAL,
+          //   message: 'finalize verification failed',
+          //   details: failures,
+          // });
+          const failedUpdates = failures.map((f) => ({
+            id: f.id,
+            status: MediaStatus.FAILED,
+          })) as Partial<Media>[];
+
+          await this.withContext('Save media updates (failed)', async () => {
+            await manager.getRepository(Media).save(failedUpdates);
           });
         }
 
         if (verified.length) {
-          const byId = new Map(verified.map((v) => [v.id, v]));
+          const updates = verified.map((v) => ({
+            id: v.id,
+            status: MediaStatus.READY,
+            cfId: v.cfId,
+            url: v.url,
+          })) as Partial<Media>[];
 
-          const updates = items.map((it) => {
-            const v = byId.get(it.id)!;
-            return {
-              id: it.id,
-              status: MediaStatus.READY,
-              cfId: v.cfId,
-              url: v.url,
-            } as Partial<Media>;
-          });
-
-          await this.withContext('save media updates', async () => {
+          await this.withContext('save media updates (verified)', async () => {
             await manager.getRepository(Media).save(updates);
           });
         }
 
         const outboxIdempotencyKey = `${entityId}:${batchId}:completed`;
 
-        await this.withContext(
-          'push data to media outbox',
-          async () => {
-            await manager.getRepository(MediaOutbox).insert({
-              idempotencyKey: outboxIdempotencyKey,
-              status: MediaBatchStatus.PENDING,
-              eventType: 'media.batch.completed',
-              payload: JSON.stringify({
+        if (verified.length > 0) {
+          await this.withContext(
+            'push data to media outbox',
+            async () => {
+              await manager.getRepository(MediaOutbox).insert({
+                idempotencyKey: outboxIdempotencyKey,
+                status: MediaBatchStatus.PENDING,
+                eventType: 'rate-entity-media-updated',
+                payload: JSON.stringify({
+                  batchId,
+                  entityId,
+                  itemIds: items.map((i) => i.id),
+                  urls: verified.map((v) => v.url),
+                  cfIds: verified.map((v) => v.cfId),
+                  count: items.length,
+                  at: new Date().toISOString(),
+                }),
                 batchId,
+                attempts: 0,
+                batch: { id: batchId },
                 entityId,
-                itemIds: items.map((i) => i.id),
-                urls: verified.map((v) => v.url),
-                cfIds: verified.map((v) => v.cfId),
-                count: items.length,
-                at: new Date().toISOString(),
-              }),
+              });
+            },
+            {
+              items,
+              verified,
               batchId,
-              attempts: 0,
-            });
-          },
-          {
-            items,
-            verified,
-            batchId,
-          },
-        );
+              entityId,
+            },
+          );
+        }
 
         await this.withContext(
           'update media batch for completed process',
@@ -449,10 +486,24 @@ export class MediaService {
           { batchId },
         );
 
+        this.logger.log(
+          {
+            batchId,
+            entityId,
+            verifiedCount: verified.length,
+            failedCount: failures.length,
+            totalCount: items.length,
+          },
+          'FinaliseUpload success',
+        );
+
         return {
           batchId,
           status: 'completed' as const,
           readyCount: items.length,
+          failedCount: failures.length,
+          totalCount: items.length,
+          failures: failures.length > 0 ? failures : undefined,
         };
       } catch (error) {
         this.logger.error({ error });
