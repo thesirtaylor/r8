@@ -7,9 +7,10 @@ import {
   RedisModule,
   RedisService,
   TheEntityRepository,
+  Outbox,
+  OutboxRepository,
 } from '@app/commonlib';
 import { OutboxService } from './outbox/outbox.service';
-import { Outbox, OutboxRepository } from '@app/commonlib';
 import { BullModule } from '@nestjs/bull';
 import { OutboxProcessor } from './outbox/outbox.processor';
 
