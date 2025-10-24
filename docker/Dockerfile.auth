@@ -31,7 +31,7 @@ ENV NODE_ENV=development
 COPY package.json yarn.lock ./
 RUN yarn install
 COPY --chown=nestjs:nodejs . .
-EXPOSE 3000
+EXPOSE 4001
 USER nestjs
 CMD ["yarn", "start:auth:dev"]
 
@@ -41,31 +41,44 @@ CMD ["yarn", "start:auth:dev"]
 FROM base AS builder
 COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile
+
 # Copy commonlib first (shared library)
 COPY --chown=nestjs:nodejs libs ./libs
+
 # Copy the specific app
 COPY --chown=nestjs:nodejs apps/auth ./apps/auth
+
 # Copy nest-cli and tsconfig
 COPY --chown=nestjs:nodejs nest-cli.json tsconfig.json tsconfig.build.json ./
+
+# Build the application
 RUN yarn build:auth
-RUN RUN yarn install --production --frozen-lockfile && yarn cache clean
+
+# Install production dependencies
+RUN yarn install --production --frozen-lockfile && yarn cache clean
 
 # ============================================
 # Production Stage - Optimized runtime image
 # ============================================
 FROM base AS production
 ENV NODE_ENV=production
+
 COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nestjs:nodejs /app/package.json ./
 COPY --from=builder --chown=nestjs:nodejs /app/yarn.lock ./
+
+# Copy migrations
 COPY --from=builder --chown=nestjs:nodejs /app/libs/commonlib/src/migrations ./libs/commonlib/src/migrations
+
+# CRITICAL: Copy proto files - this ensures they're available at runtime
+COPY --from=builder --chown=nestjs:nodejs /app/libs/commonlib/src/protos ./dist/protos
 
 COPY --chown=nestjs:nodejs scripts ./scripts
 
 RUN mkdir -p logs && chown nestjs:nodejs logs
 EXPOSE 3000
-EXPOSE 50059
+EXPOSE 50051
 
 USER nestjs
 ENTRYPOINT ["dumb-init", "--"]
