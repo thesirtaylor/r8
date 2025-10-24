@@ -8,6 +8,8 @@ async function bootstrap() {
   const app = await NestFactory.create(GatewayModule);
   const logger = app.get(AppLoggerService);
 
+  app.setGlobalPrefix('api/v1');
+
   const apiConfig = new DocumentBuilder()
     .setTitle('Api Gateway')
     .setDescription('Api Gateway for r8')
@@ -23,7 +25,7 @@ async function bootstrap() {
     )
     .build();
   const document = SwaggerModule.createDocument(app, apiConfig);
-  SwaggerModule.setup('api', app, document);
+  SwaggerModule.setup('doc', app, document);
 
   app.useGlobalInterceptors(new LoggingInterceptor(logger));
 

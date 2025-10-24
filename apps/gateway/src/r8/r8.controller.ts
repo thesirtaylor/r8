@@ -87,6 +87,7 @@ export class R8Controller {
     type: CreateTheEntityDto,
   })
   async CreateEntity(@Body() payload: CreateTheEntityRequest) {
+    //add userid to request to save to theentity table
     const dto = plainToInstance(CreateTheEntityDto, payload);
     await validateOrReject(dto);
     return await this.r8Service.createTheEntity(payload);

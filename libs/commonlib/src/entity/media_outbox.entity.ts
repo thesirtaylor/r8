@@ -34,6 +34,9 @@ export class MediaOutbox extends BaseEntity {
 
   @Column({ type: 'timestamptz', nullable: true })
   nextAttemptAt!: Date | null;
+
+  @Column({ name: 'entity_id', type: 'uuid', unique: true })
+  entityId!: string;
 }
 //outbox for elasticsearch media events
 //this entity is used to store media events that need to be processed by the search engine

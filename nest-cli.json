@@ -5,13 +5,8 @@
   "compilerOptions": {
     "deleteOutDir": true,
     "webpack": true,
-    "tsConfigPath": "apps/r8/tsconfig.app.json",
-    "assets": [
-      {
-        "include": "**/*.proto",
-        "outDir": "dist"
-      }
-    ]
+    "webpackConfigPath": "webpack.config.js",
+    "tsConfigPath": "apps/r8/tsconfig.app.json"
   },
   "monorepo": true,
   "root": "apps/r8",
@@ -22,7 +17,14 @@
       "entryFile": "main",
       "sourceRoot": "apps/r8/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/r8/tsconfig.app.json"
+        "tsConfigPath": "apps/r8/tsconfig.app.json",
+        "assets": [
+          {
+            "include": "../../../libs/commonlib/src/protos/**/*.proto",
+            "outDir": "dist/protos",
+            "watchAssets": true
+          }
+        ]
       }
     },
     "searchengine": {
@@ -31,7 +33,14 @@
       "entryFile": "main",
       "sourceRoot": "apps/searchengine/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/searchengine/tsconfig.app.json"
+        "tsConfigPath": "apps/searchengine/tsconfig.app.json",
+        "assets": [
+          {
+            "include": "../../../libs/commonlib/src/protos/**/*.proto",
+            "outDir": "dist/protos",
+            "watchAssets": true
+          }
+        ]
       }
     },
     "commonlib": {
@@ -40,7 +49,14 @@
       "entryFile": "index",
       "sourceRoot": "libs/commonlib/src",
       "compilerOptions": {
-        "tsConfigPath": "libs/commonlib/tsconfig.lib.json"
+        "tsConfigPath": "libs/commonlib/tsconfig.lib.json",
+        "assets": [
+          {
+            "include": "protos/**/*.proto",
+            "outDir": "dist/protos",
+            "watchAssets": true
+          }
+        ]
       }
     },
     "gateway": {
@@ -49,7 +65,14 @@
       "entryFile": "main",
       "sourceRoot": "apps/gateway/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/gateway/tsconfig.app.json"
+        "tsConfigPath": "apps/gateway/tsconfig.app.json",
+        "assets": [
+          {
+            "include": "../../../libs/commonlib/src/protos/**/*.proto",
+            "outDir": "dist/protos",
+            "watchAssets": true
+          }
+        ]
       }
     },
     "media": {
@@ -58,7 +81,14 @@
       "entryFile": "main",
       "sourceRoot": "apps/media/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/media/tsconfig.app.json"
+        "tsConfigPath": "apps/media/tsconfig.app.json",
+        "assets": [
+          {
+            "include": "../../../libs/commonlib/src/protos/**/*.proto",
+            "outDir": "dist/protos",
+            "watchAssets": true
+          }
+        ]
       }
     },
     "auth": {
@@ -67,7 +97,14 @@
       "entryFile": "main",
       "sourceRoot": "apps/auth/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/auth/tsconfig.app.json"
+        "tsConfigPath": "apps/auth/tsconfig.app.json",
+        "assets": [
+          {
+            "include": "../../../libs/commonlib/src/protos/**/*.proto",
+            "outDir": "dist/protos",
+            "watchAssets": true
+          }
+        ]
       }
     }
   }

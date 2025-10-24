@@ -1,8 +1,9 @@
 import { IsEnum } from 'class-validator';
-import { Column, Entity, Index, OneToMany } from 'typeorm';
+import { Column, Entity, Index, ManyToOne, OneToMany } from 'typeorm';
 import { Rating } from './rating.entity';
 import { BaseEntity } from './base_entity.entity';
 import { Media } from './media.entity';
+import { User } from './user.entity';
 
 export enum EntityType {
   PRODUCT = 'product',
@@ -53,4 +54,7 @@ export class TheEntity extends BaseEntity {
 
   @OneToMany(() => Media, (media) => media.entity)
   media: Media[];
+
+  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
+  createdBy: User;
 }
