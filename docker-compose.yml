@@ -1,0 +1,246 @@
+version: '3.8'
+
+services:
+  # ======================
+  # Infrastructure Services
+  # ======================
+  
+  postgres:
+    image: postgres:15-alpine
+    container_name: r8_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-r8db}
+      POSTGRES_USER: ${DB_USER:-r8user}
+      POSTGRES_PASSWORD: ${DB_PASS:-secret}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - r8_network
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-r8user} -d ${DB_NAME:-r8db}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: r8_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - r8_network
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: r8_elasticsearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - r8_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ======================
+  # Application Services
+  # ======================
+
+  auth:
+    user: "root"
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.auth
+      target: ${NODE_ENV:-development}
+    container_name: r8_auth
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      DB_HOST: r8_postgres
+      REDIS_HOST: r8_redis
+      PORT: 3000
+      GRPC_PORT: ${AUTH_GRPC_PORT:-50059}
+    ports:
+      - "3001:3000"
+      - "${AUTH_GRPC_PORT:-50059}:${AUTH_GRPC_PORT:-50059}"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.yarn/cache
+    networks:
+      - r8_network
+    command: ["sh", "./scripts/start-auth.sh", "${NODE_ENV:-development}"]
+
+  r8:
+    user: "root"
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.r8
+      target: ${NODE_ENV:-development}
+    container_name: r8_r8
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      DB_HOST: r8_postgres
+      REDIS_HOST: r8_redis
+      PORT: 3000
+      GRPC_PORT: ${R8_GRPC_PORT:-50050}
+    ports:
+      - "3002:3000"
+      - "${R8_GRPC_PORT:-50050}:${R8_GRPC_PORT:-50050}"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.yarn/cache
+    networks:
+      - r8_network
+    command: ["sh", "./scripts/start-r8.sh", "${NODE_ENV:-development}"]
+
+  media:
+    user: "root"
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.media
+      target: ${NODE_ENV:-development}
+    container_name: r8_media
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      DB_HOST: r8_postgres
+      REDIS_HOST: r8_redis
+      PORT: 3000
+      GRPC_PORT: ${MEDIA_GRPC_PORT:-50056}
+    ports:
+      - "3003:3000"
+      - "${MEDIA_GRPC_PORT:-50056}:${MEDIA_GRPC_PORT:-50056}"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.yarn/cache
+      - media_uploads:/app/uploads
+    networks:
+      - r8_network
+    command: ["sh", "./scripts/start-media.sh", "${NODE_ENV:-development}"]
+
+  searchengine:
+    user: "root"
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.searchengine
+      target: ${NODE_ENV:-development}
+    container_name: r8_searchengine
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      DB_HOST: r8_postgres
+      REDIS_HOST: r8_redis
+      ELASTICSEARCH_NODE: http://r8_elasticsearch:9200
+      PORT: 3000
+      GRPC_PORT: ${SEARCHENGINE_GRPC_PORT:-50053}
+    ports:
+      - "3004:3000"
+      - "${SEARCHENGINE_GRPC_PORT:-50053}:${SEARCHENGINE_GRPC_PORT:-50053}"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.yarn/cache
+    networks:
+      - r8_network
+    command: ["sh", "./scripts/start-searchengine.sh", "${NODE_ENV:-development}"]
+
+  gateway:
+    user: "root"
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.gateway
+      target: ${NODE_ENV:-development}
+    container_name: r8_gateway
+    restart: unless-stopped
+    depends_on:
+      - auth
+      - r8
+      - media
+      - searchengine
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: ${PORT_GATEWAY:-4002}
+      AUTH_GRPC: r8_auth:${AUTH_GRPC_PORT:-50059}
+      R8_GRPC: r8_r8:${R8_GRPC_PORT:-50050}
+      MEDIA_GRPC: r8_media:${MEDIA_GRPC_PORT:-50056}
+      SEARCHENGINE_GRPC: r8_searchengine:${SEARCHENGINE_GRPC_PORT:-50053}
+    ports:
+      - "${PORT_GATEWAY:-4002}:${PORT_GATEWAY:-4002}"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.yarn/cache
+    networks:
+      - r8_network
+    command: ["sh", "./scripts/start-gateway.sh", "${NODE_ENV:-development}"]
+
+networks:
+  r8_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  elasticsearch_data:
+    driver: local
+  media_uploads:
+    driver: local
